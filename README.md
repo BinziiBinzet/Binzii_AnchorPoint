@@ -1,7 +1,10 @@
-# Manipulate Anchor Point
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M212BC7C)
 
-ScriptUI that moves the anchor point of a layer, with options to create a null and/or add anchor point expression and offset it.
+
+EffectCraft     ScriptUI that moves the anchor point of a layer, with options to create a null parent and offset it.
+
+## About This Fork
+
+This repository is a fork of [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point), originally created by **[Eveline Falcão](https://github.com/evefalcao)**. All credit for the original script and its concept goes to her. This fork exists to keep 
 
 ## Table of Contents
 
@@ -23,10 +26,7 @@ ScriptUI that moves the anchor point of a layer, with options to create a null a
 - Offset Point: offset to the anchor point from the selected layer position
 - Add Null: add null to anchor point
 - Parent to Null: parent layer to null
-- Add Expression: add expression to pin the anchor to the selected point
 
-## Examples
-Work in progress.
 
 ## Contributing
 Contributions are welcome! If you have any ideas for improvement, bug fixes, or new features, please open an issue or submit a pull request.
