@@ -46,18 +46,18 @@ group1.margins = 0;
 
 var LT = group1.add("button", undefined, undefined, {name: "LT"});
 LT.text = "\u2196"; // ↖
-LT.preferredSize.width = 25;
-LT.preferredSize.height = 25;
+LT.preferredSize.width = 30;
+LT.preferredSize.height = 30;
 
 var CT = group1.add("button", undefined, undefined, {name: "CT"});
 CT.text = "\u2191"; // ↑
-CT.preferredSize.width = 25;
-CT.preferredSize.height = 25;
+CT.preferredSize.width = 30;
+CT.preferredSize.height = 30;
 
 var RT = group1.add("button", undefined, undefined, {name: "RT"});
 RT.text = "\u2197"; // ↗
-RT.preferredSize.width = 25;
-RT.preferredSize.height = 25;
+RT.preferredSize.width = 30;
+RT.preferredSize.height = 30;
 
 // GROUP2 - middle row
 // ======
@@ -69,18 +69,18 @@ group2.margins = 0;
 
 var LL = group2.add("button", undefined, undefined, {name: "LL"});
 LL.text = "\u2190"; // ←
-LL.preferredSize.width = 25;
-LL.preferredSize.height = 25;
+LL.preferredSize.width = 30;
+LL.preferredSize.height = 30;
 
 var CC = group2.add("button", undefined, undefined, {name: "CC"});
 CC.text = "\u2022"; // • (center marker so the middle cell isn't empty)
-CC.preferredSize.width = 25;
-CC.preferredSize.height = 25;
+CC.preferredSize.width = 30;
+CC.preferredSize.height = 30;
 
 var RR = group2.add("button", undefined, undefined, {name: "RR"});
 RR.text = "\u2192"; // →
-RR.preferredSize.width = 25;
-RR.preferredSize.height = 25;
+RR.preferredSize.width = 30;
+RR.preferredSize.height = 30;
 
 // GROUP3 - bottom row
 // ======
@@ -92,18 +92,18 @@ group3.margins = 0;
 
 var LB = group3.add("button", undefined, undefined, {name: "LB"});
 LB.text = "\u2199"; // ↙
-LB.preferredSize.width = 25;
-LB.preferredSize.height = 25;
+LB.preferredSize.width = 30;
+LB.preferredSize.height = 30;
 
 var BB = group3.add("button", undefined, undefined, {name: "BB"});
 BB.text = "\u2193"; // ↓
-BB.preferredSize.width = 25;
-BB.preferredSize.height = 25;
+BB.preferredSize.width = 30;
+BB.preferredSize.height = 30;
 
 var RB = group3.add("button", undefined, undefined, {name: "RB"});
 RB.text = "\u2198"; // ↘
-RB.preferredSize.width = 25;
-RB.preferredSize.height = 25;
+RB.preferredSize.width = 30;
+RB.preferredSize.height = 30;
 
 // ADD NULL BUTTON
 // ===============
@@ -238,6 +238,7 @@ function validateSelection(){
 //   x: 0 = left edge, 0.5 = center, 1 = right edge
 //   y: 0 = top edge,  0.5 = center, 1 = bottom edge
 function applyAnchorPoint(fx, fy){
+  try {
     var selection = validateSelection();
     if(selection == null) return;
     var comp = selection.comp;
@@ -323,12 +324,17 @@ function applyAnchorPoint(fx, fy){
         setPropertyValue(comp, anchorPointProp, newAnchorValue);
     }
     app.endUndoGroup();
+  } catch(err){
+    try { app.endUndoGroup(); } catch(e2){}
+    alert("Binzii Anchor Point: could not move the anchor point - " + err);
+  }
 }
 
 // Create a null object at the anchor point position of the selected layer(s)
 // and automatically parent the layer(s) to it. There is only ONE null button
 // now: "Add Null" always creates + parents in one click.
 function addNullToLayers(){
+  try {
     var selection = validateSelection();
     if(selection == null) return;
     var comp = selection.comp;
@@ -361,23 +367,30 @@ function addNullToLayers(){
         nullCtrl.selected = false;
     }
     app.endUndoGroup();
+  } catch(err){
+    try { app.endUndoGroup(); } catch(e2){}
+    alert("Binzii Anchor Point: could not add the null - " + err);
+  }
 }
 
-// Wire the instant-apply handlers: clicking an arrow immediately moves the
-// anchor point to that position (buttons have no persistent state, so there
-// is nothing to multi-select - each click just applies its own position).
-if (LT) LT.onClick = safeCall(function(){ applyAnchorPoint(0,   0);   });
-if (CT) CT.onClick = safeCall(function(){ applyAnchorPoint(0.5, 0);   });
-if (RT) RT.onClick = safeCall(function(){ applyAnchorPoint(1,   0);   });
-if (LL) LL.onClick = safeCall(function(){ applyAnchorPoint(0,   0.5); });
-if (CC) CC.onClick = safeCall(function(){ applyAnchorPoint(0.5, 0.5); });
-if (RR) RR.onClick = safeCall(function(){ applyAnchorPoint(1,   0.5); });
-if (LB) LB.onClick = safeCall(function(){ applyAnchorPoint(0,   1);   });
-if (BB) BB.onClick = safeCall(function(){ applyAnchorPoint(0.5, 1);   });
-if (RB) RB.onClick = safeCall(function(){ applyAnchorPoint(1,   1);   });
+// Wire the instant-apply handlers. IMPORTANT: every onClick is assigned
+// DIRECTLY as a plain function literal (LT.onClick = function(){...}).
+// The previous indirection through safeCall() returned a closure that some
+// hosts (EffectsCraft) refuse to accept, producing
+// "type error: not a callable function" when an arrow button was clicked.
+// Error handling lives INSIDE applyAnchorPoint()/addNullToLayers() instead.
+LT.onClick = function(){ applyAnchorPoint(0,   0);   };
+CT.onClick = function(){ applyAnchorPoint(0.5, 0);   };
+RT.onClick = function(){ applyAnchorPoint(1,   0);   };
+LL.onClick = function(){ applyAnchorPoint(0,   0.5); };
+CC.onClick = function(){ applyAnchorPoint(0.5, 0.5); };
+RR.onClick = function(){ applyAnchorPoint(1,   0.5); };
+LB.onClick = function(){ applyAnchorPoint(0,   1);   };
+BB.onClick = function(){ applyAnchorPoint(0.5, 1);   };
+RB.onClick = function(){ applyAnchorPoint(1,   1);   };
 
 // "Add Null" button: creates a null AT the anchor point position and parents
 // the selected layer(s) to it in one click.
-if (button1) button1.onClick = safeCall(function(){
+button1.onClick = function(){
     addNullToLayers();
-});
+};
