@@ -42,10 +42,13 @@ var resourceString =
         },\
         otherGroup: Group{orientation: 'column', alignChildren: ['left', 'top'],\
             rotateNull: Checkbox{text: 'Rotate Null'},\
-            addExpression: Checkbox{text: 'Add Expression'},\
         },\
     },\
-    applyButton: Button{text: 'Apply', alignment: ['center', 'bottom']}\
+    bottomRow: Group{orientation: 'row', alignment: ['fill', 'bottom'], alignChildren: ['center', 'center'],\
+        autoApply: Checkbox{text: 'Auto Apply'},\
+        applyButton: Button{text: 'Apply'}\
+    },\
+    autoApplyHint: StaticText{text: 'Auto apply anchor point when activated', alignment: ['center', 'top']}\
 }"
 
 function createUserInterface(thisObj, userInterfaceString, scriptName){
@@ -214,7 +217,7 @@ function moveAnchorPoint(){
         var resetRotation = false;
         var resetScale = false;
 
-        var finalAnchorValue, pointPosition, pointPositionTxt, positionTag, originDistanceToNewAnchorPoint, newAnchorPositionId;
+        var finalAnchorValue, pointPosition, positionTag, originDistanceToNewAnchorPoint, newAnchorPositionId;
 
         // Bounding box
         var sourceRect = getBoundingBox(currentLayer);
@@ -237,49 +240,40 @@ function moveAnchorPoint(){
         // Row 1
         if (UI.anchorPointGroup.row1.a.value){
             pointPosition = [left + offsetX, top + offsetY, offsetZ];
-            pointPositionTxt = "[left + " + offsetX + ", " + "top + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Top Left";
             newAnchorPositionId = 0;
         } else if (UI.anchorPointGroup.row1.b.value){
             pointPosition = [(left + width / 2) + offsetX, top + offsetY, offsetZ];
-            pointPositionTxt = "[(left + width / 2) + " + offsetX + ", " + "top + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Top Center";
             newAnchorPositionId = 1;
         } else if (UI.anchorPointGroup.row1.c.value){
             pointPosition = [(left + width) + offsetX, top + offsetY, offsetZ];
-            pointPositionTxt = "[(left + width) + " + offsetX + ", " + "top + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Top Right";
             newAnchorPositionId = 2;
         // Row 2
         } else if (UI.anchorPointGroup.row2.a.value){
             pointPosition = [left + offsetX, (top + height / 2) + offsetY, offsetZ];
-            pointPositionTxt = "[left + " + offsetX + ", " + "(top + height / 2) + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Center Left";
             newAnchorPositionId = 3;
         } else if (UI.anchorPointGroup.row2.b.value){
             pointPosition = [(left + width / 2) + offsetX, (top + height / 2) + offsetY, offsetZ];
-            pointPositionTxt = "[(left + width / 2) + " + offsetX + ", " + "(top + height / 2) + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Center";
             newAnchorPositionId = 4;
         } else if (UI.anchorPointGroup.row2.c.value){
             pointPosition = [(left + width) + offsetX, (top + height / 2) + offsetY, offsetZ];
-            pointPositionTxt = "[(left + width) + " + offsetX + ", " + "(top + height / 2) + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Center Right";
             newAnchorPositionId = 5;
         // Row 3
         } else if (UI.anchorPointGroup.row3.a.value){
             pointPosition = [left + offsetX, (top + height) + offsetY, offsetZ];
-            pointPositionTxt = "[left + " + offsetX + ", " + "(top + height) + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Bottom Left";
             newAnchorPositionId = 6;
         } else if (UI.anchorPointGroup.row3.b.value){
             pointPosition = [(left + width / 2) + offsetX, (top + height) + offsetY, offsetZ];
-            pointPositionTxt = "[(left + width / 2) + " + offsetX + ", " + "(top + height) + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Bottom Center";
             newAnchorPositionId = 7;
         } else if (UI.anchorPointGroup.row3.c.value){
             pointPosition = [(left + width) + offsetX, (top + height) + offsetY, offsetZ];
-            pointPositionTxt = "[(left + width) + " + offsetX + ", " + "(top + height) + " + offsetY + ", " + offsetZ + "]";
             positionTag = "Bottom Right";
             newAnchorPositionId = 8;
         }
@@ -356,11 +350,6 @@ function moveAnchorPoint(){
             nullCtrl.selected = false;
         }
 
-        // Add expression
-        if(UI.extraActionGroup.otherGroup.addExpression.value){
-            anchorPointProp.expression = "let layerRect = thisLayer.sourceRectAtTime(time, true);\nlet top = layerRect.top;\nlet left = layerRect.left;\nlet width = layerRect.width;\nlet height = layerRect.height;\n\n" + pointPositionTxt;
-        }
-
         // Parent layer to null
         if(ifParentToNull){
             currentLayer.parent = nullCtrl;
@@ -370,6 +359,35 @@ function moveAnchorPoint(){
     app.endUndoGroup();
 }
 
+// Apply on button click
 UI.applyButton.onClick = function(){
     moveAnchorPoint();
 }
+
+// Auto Apply: run the script automatically whenever any control changes
+// while the "Auto Apply" checkbox is activated
+function bindAutoApply(element){
+    element.onChange = function(){
+        if(UI.bottomRow.autoApply.value){
+            moveAnchorPoint();
+        }
+    };
+}
+
+// Anchor point radio buttons (rows 1-3)
+for(var r = 1; r <= 3; r++){
+    var row = UI.anchorPointGroup['row' + r];
+    for(var c = 0; c < row.children.length; c++){
+        bindAutoApply(row.children[c]);
+    }
+}
+
+// Offset fields
+bindAutoApply(UI.offsetAnchorPoint.xText);
+bindAutoApply(UI.offsetAnchorPoint.yText);
+bindAutoApply(UI.offsetAnchorPoint.zText);
+
+// Extra action checkboxes
+bindAutoApply(UI.extraActionGroup.nullGroup.addNull);
+bindAutoApply(UI.extraActionGroup.nullGroup.parentToNull);
+bindAutoApply(UI.extraActionGroup.otherGroup.rotateNull);

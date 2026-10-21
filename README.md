@@ -25,17 +25,20 @@ All original credit for the script and its concept goes to the upstream author. 
 
 ## Installation
 1. Download the [latest release](https://github.com/evefalcao/EF_Manipulate-Anchor-Point/archive/refs/heads/main.zip) of the script.
-2. Copy the script file (`Manipulate-Anchor-Point.jsx`) to your After Effects scripts folder:
+2. Copy the script file (`Binzii_AnchorPoint.jsx`) to your After Effects scripts folder:
     - **Windows**: `C:\Program Files\Adobe\Adobe After Effects (version)\Support Files\Scripts\ScriptUI Panels`
     - **Mac**: `/Applications/Adobe After Effects (version)/Scripts/ScriptUI Panels`
-3. Alternatively, in After Effects, go to `File > Scripts > Install ScriptUI Panel` select the script file (`Manipulate-Anchor-Point.jsx`) and restart After Effects.
+3. Alternatively, in After Effects, go to `File > Scripts > Install ScriptUI Panel` select the script file (`Binzii_AnchorPoint.jsx`) and restart After Effects.
 
 ## Options
 - Anchor Point: select the point in the layer where the anchor point will be moved to
 - Offset Point: offset to the anchor point from the selected layer position
 - Add Null: add null to anchor point
 - Parent to Null: parent layer to null
-- Add Expression: add expression to pin the anchor to the selected point
+- Rotate Null: rotate the created null to match the layer rotation
+- Auto Apply: auto apply anchor point when activated (next to the Apply button)
+
+> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression* option and adds an *Auto Apply* checkbox that re-runs the script automatically whenever any control changes while it is activated.
 
 ## Examples
 Work in progress.
