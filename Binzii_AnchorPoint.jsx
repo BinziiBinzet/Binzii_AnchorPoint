@@ -46,18 +46,18 @@ group1.margins = 0;
 
 var LT = group1.add("button", undefined, undefined, {name: "LT"});
 LT.text = "\u2196"; // ↖
-LT.preferredSize.width = 40;
-LT.preferredSize.height = 40;
+LT.preferredSize.width = 25;
+LT.preferredSize.height = 25;
 
 var CT = group1.add("button", undefined, undefined, {name: "CT"});
 CT.text = "\u2191"; // ↑
-CT.preferredSize.width = 40;
-CT.preferredSize.height = 40;
+CT.preferredSize.width = 25;
+CT.preferredSize.height = 25;
 
 var RT = group1.add("button", undefined, undefined, {name: "RT"});
 RT.text = "\u2197"; // ↗
-RT.preferredSize.width = 40;
-RT.preferredSize.height = 40;
+RT.preferredSize.width = 25;
+RT.preferredSize.height = 25;
 
 // GROUP2 - middle row
 // ======
@@ -69,18 +69,18 @@ group2.margins = 0;
 
 var LL = group2.add("button", undefined, undefined, {name: "LL"});
 LL.text = "\u2190"; // ←
-LL.preferredSize.width = 40;
-LL.preferredSize.height = 40;
+LL.preferredSize.width = 25;
+LL.preferredSize.height = 25;
 
 var CC = group2.add("button", undefined, undefined, {name: "CC"});
 CC.text = "\u2022"; // • (center marker so the middle cell isn't empty)
-CC.preferredSize.width = 40;
-CC.preferredSize.height = 40;
+CC.preferredSize.width = 25;
+CC.preferredSize.height = 25;
 
 var RR = group2.add("button", undefined, undefined, {name: "RR"});
 RR.text = "\u2192"; // →
-RR.preferredSize.width = 40;
-RR.preferredSize.height = 40;
+RR.preferredSize.width = 25;
+RR.preferredSize.height = 25;
 
 // GROUP3 - bottom row
 // ======
@@ -92,18 +92,18 @@ group3.margins = 0;
 
 var LB = group3.add("button", undefined, undefined, {name: "LB"});
 LB.text = "\u2199"; // ↙
-LB.preferredSize.width = 40;
-LB.preferredSize.height = 40;
+LB.preferredSize.width = 25;
+LB.preferredSize.height = 25;
 
 var BB = group3.add("button", undefined, undefined, {name: "BB"});
 BB.text = "\u2193"; // ↓
-BB.preferredSize.width = 40;
-BB.preferredSize.height = 40;
+BB.preferredSize.width = 25;
+BB.preferredSize.height = 25;
 
 var RB = group3.add("button", undefined, undefined, {name: "RB"});
 RB.text = "\u2198"; // ↘
-RB.preferredSize.width = 40;
-RB.preferredSize.height = 40;
+RB.preferredSize.width = 25;
+RB.preferredSize.height = 25;
 
 // ADD NULL BUTTON
 // ===============
@@ -133,10 +133,13 @@ function setHelpTip(element, tip){
     } catch(e){ /* host does not support helpTip - ignore */ }
 }
 
-function bindEvent(element, event, handler){
-    try {
-        if(element){ element[event] = handler; }
-    } catch(e){ /* not supported by this host - ignore */ }
+// Direct onClick assignment (ScriptUI standard). The previous generic
+// element[event] = handler indirection caused "not a callable function"
+// on some hosts, so handlers are now assigned directly below instead.
+function safeCall(fn){
+    return function(){
+        try { fn(); } catch(err){ alert("Binzii_AnchorPoint: " + err); }
+    };
 }
 
 // Tooltips for every control
@@ -363,18 +366,18 @@ function addNullToLayers(){
 // Wire the instant-apply handlers: clicking an arrow immediately moves the
 // anchor point to that position (buttons have no persistent state, so there
 // is nothing to multi-select - each click just applies its own position).
-bindEvent(LT, "onClick", function(){ applyAnchorPoint(0,   0);   });
-bindEvent(CT, "onClick", function(){ applyAnchorPoint(0.5, 0);   });
-bindEvent(RT, "onClick", function(){ applyAnchorPoint(1,   0);   });
-bindEvent(LL, "onClick", function(){ applyAnchorPoint(0,   0.5); });
-bindEvent(CC, "onClick", function(){ applyAnchorPoint(0.5, 0.5); });
-bindEvent(RR, "onClick", function(){ applyAnchorPoint(1,   0.5); });
-bindEvent(LB, "onClick", function(){ applyAnchorPoint(0,   1);   });
-bindEvent(BB, "onClick", function(){ applyAnchorPoint(0.5, 1);   });
-bindEvent(RB, "onClick", function(){ applyAnchorPoint(1,   1);   });
+if (LT) LT.onClick = safeCall(function(){ applyAnchorPoint(0,   0);   });
+if (CT) CT.onClick = safeCall(function(){ applyAnchorPoint(0.5, 0);   });
+if (RT) RT.onClick = safeCall(function(){ applyAnchorPoint(1,   0);   });
+if (LL) LL.onClick = safeCall(function(){ applyAnchorPoint(0,   0.5); });
+if (CC) CC.onClick = safeCall(function(){ applyAnchorPoint(0.5, 0.5); });
+if (RR) RR.onClick = safeCall(function(){ applyAnchorPoint(1,   0.5); });
+if (LB) LB.onClick = safeCall(function(){ applyAnchorPoint(0,   1);   });
+if (BB) BB.onClick = safeCall(function(){ applyAnchorPoint(0.5, 1);   });
+if (RB) RB.onClick = safeCall(function(){ applyAnchorPoint(1,   1);   });
 
 // "Add Null" button: creates a null AT the anchor point position and parents
 // the selected layer(s) to it in one click.
-bindEvent(button1, "onClick", function(){
+if (button1) button1.onClick = safeCall(function(){
     addNullToLayers();
 });
