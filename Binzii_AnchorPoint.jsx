@@ -8,28 +8,31 @@
  * @thankyou          Charles Bordenave (https://www.nabscripts.com) for RepositionAnchorPoint (version: 3.9) and Zack Lovatt (https://lova.tt/) for zl_CreatePivotalNull (version: 1.1) and Eveline Falcão.
  *========================================================================**/
 
-var resourceString = 
-"group{orientation:'column', alignment: ['left', 'top'], alignChildren: ['left', 'top'],\
-    anchorPointGroup: Panel{alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], text: 'Anchor Point',\
-        row1: Group{orientation:'row',\
-            a: CheckBox{},\
-            b: CheckBox{},\
-            c: CheckBox{},\
+// 3x3 grid of unlabeled square buttons. Clicking a cell immediately applies
+// that anchor point. Exclusivity is handled in code (pressing one cell
+// releases all others), so multiple cells can never be active at once.
+var resourceString =
+"group{orientation:'column', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
+    anchorPointGroup: Group{orientation:'column', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+        row1: Group{orientation:'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+            a: Button{preferredSize: [30, 30]},\
+            b: Button{preferredSize: [30, 30]},\
+            c: Button{preferredSize: [30, 30]},\
         },\
-        row2: Group{orientation:'row',\
-            a: CheckBox{},\
-            b: CheckBox{},\
-            c: CheckBox{},\
+        row2: Group{orientation:'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+            a: Button{preferredSize: [30, 30]},\
+            b: Button{preferredSize: [30, 30]},\
+            c: Button{preferredSize: [30, 30]},\
         },\
-        row3: Group{orientation:'row',\
-            a: CheckBox{},\
-            b: CheckBox{},\
-            c: CheckBox{},\
+        row3: Group{orientation:'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+            a: Button{preferredSize: [30, 30]},\
+            b: Button{preferredSize: [30, 30]},\
+            c: Button{preferredSize: [30, 30]},\
         },\
     },\
-    extraActionGroup: Group{orientation: 'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
-        nullGroup: Group{orientation: 'column', alignChildren: ['left', 'top'],\
-            addNullBtn: Button{text: 'Add Null'},\
+    extraActionGroup: Group{orientation: 'column', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
+        nullGroup: Group{orientation: 'column', alignChildren: ['center', 'top'],\
+            addNullBtn: Button{text: 'Add Null', preferredSize: [-1, 28]},\
         },\
     }\
 }"
@@ -78,50 +81,48 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     var anchorPointGroup = UI.anchorPointGroup;
     var nullGroup = UI.extraActionGroup.nullGroup;
     
-    // The 3x3 grid uses CheckBoxes (RadioButton widgets render inconsistently
-    // across hosts). Exclusivity is enforced manually: clicking one cell
-    // unchecks ALL others in every row, so only one position can be active at
-    // a time. The anchor point itself is applied later, immediately when a
-    // cell gets checked - there is no Apply button.
-    function clearAllCells(exceptRow, exceptCol){
+    // The 3x3 grid is made of plain (unlabeled) Buttons. ScriptUI buttons have
+    // no persistent "checked" state, so the selected cell is tracked in a
+    // variable: clicking a cell makes it THE active cell (all others revert to
+    // their normal look automatically) and applies the anchor point right away.
+    // Multi-select is therefore impossible by design.
+    var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
+
+    function highlightActiveCell(activeRow, activeCol){
         for(var r = 1; r <= 3; r++){
             var row = anchorPointGroup['row' + r];
             if(!row) continue;
             for(var i = 0; i < row.children.length; i++){
-                if(r === exceptRow && i === exceptCol) continue;
-                try { row.children[i].value = false; } catch(e){}
+                try {
+                    if(r === activeRow && i === activeCol){
+                        row.children[i].notify("onDraw"); // repaint pressed/active look where supported
+                    }
+                } catch(e){}
             }
         }
     }
+
+    setHelpTip(anchorPointGroup, "Click a position to instantly move the anchor point there");
     for(var r = 1; r <= 3; r++){
         (function(rowIdx){
             var row = anchorPointGroup['row' + rowIdx];
             if(!row) return;
             for(var c = 0; c < row.children.length; c++){
                 (function(colIdx){
+                    var label = tooltipGrid[(rowIdx - 1) * 3 + colIdx];
+                    setHelpTip(row.children[colIdx], "Move anchor point to " + label + " of the layer (applies instantly)");
                     bindEvent(row.children[colIdx], "onClick", function() {
-                        if(this.value){
-                            clearAllCells(rowIdx, colIdx);
-                        }
+                        window.selectedAnchorRow = rowIdx;
+                        window.selectedAnchorCol = colIdx;
+                        highlightActiveCell(rowIdx, colIdx);
+                        applyAnchorPoint();
                     });
                 })(c);
             }
         })(r);
     }
 
-    var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
-    setHelpTip(anchorPointGroup, "Choose where to move the anchor point");
-    for(var r = 1; r <= 3; r++){
-        var row = anchorPointGroup['row' + r];
-        if(!row) continue;
-        for(var c = 0; c < row.children.length; c++){
-            setHelpTip(row.children[c], "Set anchor point to " + tooltipGrid[(r - 1) * 3 + c] + " of the layer");
-        }
-    }
     setHelpTip(nullGroup.addNullBtn, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
-
-    // Default state for the radio selection
-    anchorPointGroup.row2.b.value = true;
 
     return UI;
 }
@@ -209,19 +210,10 @@ function validateSelection(){
     return { comp: comp, layers: layers };
 }
 
-// Build a unique key for the current anchor point controls state
-function getAnchorStateKey(){
-    var selRadio = "";
-    for(var r = 1; r <= 3; r++){
-        var row = UI.anchorPointGroup['row' + r];
-        for(var c = 0; c < row.children.length; c++){
-            if(row.children[c].value){
-                selRadio = "row" + r + "." + row.children[c].text;
-            }
-        }
-    }
-    return selRadio;
-}
+// Which grid cell is currently active (tracked when a button is clicked).
+// Defaults to Center so the very first click always has a valid state.
+window.selectedAnchorRow = 2;
+window.selectedAnchorCol = 1;
 
 // Move the anchor point to the selected grid position. Each click computes
 // the target from the CURRENT bounding box, so switching positions never
@@ -241,9 +233,6 @@ function applyAnchorPoint(){
         var positionProp = currentLayer.property("ADBE Transform Group").property("ADBE Position");
         var anchorPointProp = currentLayer.property("ADBE Transform Group").property("ADBE Anchor Point");
 
-        var initialPositionValue = positionProp.value;
-        var initialAnchorValue = anchorPointProp.value;
-
         // Bounding box
         var sourceRect = getBoundingBox(currentLayer);
         var top = sourceRect.top;
@@ -256,46 +245,65 @@ function applyAnchorPoint(){
             anchorPointProp.expression = "";
         }
 
-        // Grid selection - compute the target point directly in the
-        // layer's own coordinate system (same math as the original upstream
-        // script). This does NOT rely on toWorld()/fromWorld() expressions,
-        // which are unsupported/unreliable in EffectsCraft and made the
-        // anchor point move silently fail.
+        // Grid selection: which cell is active (tracked on click). Compute the
+        // target corner/edge/center of the bounding box in LAYER space.
+        var selRow = window.selectedAnchorRow || 2;
+        var selCol = (window.selectedAnchorCol === undefined) ? 1 : window.selectedAnchorCol;
+
+        var fx, fy; // fractional position within the bounding box
+        if(selCol === 0)      fx = left;
+        else if(selCol === 1) fx = left + width / 2;
+        else                  fx = left + width;
+
+        if(selRow === 1)      fy = top;
+        else if(selRow === 2) fy = top + height / 2;
+        else                  fy = top + height;
+
         var newAnchorValue;
-        if (UI.anchorPointGroup.row1.a.value){
-            newAnchorValue = [left, top];
-        } else if (UI.anchorPointGroup.row1.b.value){
-            newAnchorValue = [(left + width / 2), top];
-        } else if (UI.anchorPointGroup.row1.c.value){
-            newAnchorValue = [(left + width), top];
-        } else if (UI.anchorPointGroup.row2.a.value){
-            newAnchorValue = [left, (top + height / 2)];
-        } else if (UI.anchorPointGroup.row2.b.value){
-            newAnchorValue = [(left + width / 2), (top + height / 2)];
-        } else if (UI.anchorPointGroup.row2.c.value){
-            newAnchorValue = [(left + width), (top + height / 2)];
-        } else if (UI.anchorPointGroup.row3.a.value){
-            newAnchorValue = [left, (top + height)];
-        } else if (UI.anchorPointGroup.row3.b.value){
-            newAnchorValue = [(left + width / 2), (top + height)];
-        } else if (UI.anchorPointGroup.row3.c.value){
-            newAnchorValue = [(left + width), (top + height)];
+        if(currentLayer.threeDLayer){
+            // ---- 3D layers ----
+            // The naive "position += anchor delta" trick breaks once a 3D
+            // layer is rotated: the anchor delta lives in the layer's OWN
+            // (rotated) coordinate system, so the layer visibly slides along
+            // its rotated axes. Fix: do the correction in WORLD space instead.
+            //   1. remember where the OLD anchor sits in world space,
+            //   2. set the new anchor,
+            //   3. with the new anchor, the chosen point (fx, fy) IS rendered
+            //      at the layer's Position - find where that lands in world
+            //      space via toWorld(),
+            //   4. shift Position by the world-space correction vector so the
+            //      chosen point lands exactly where the old anchor was.
+            // Result: the layer never jumps visually, even when rotated.
+            var oldAnchorWorld = currentLayer.toWorld(anchorPointProp.value);
+
+            var newA3D = [fx, fy];
+            if(anchorPointProp.value.length > 2){ newA3D.push(anchorPointProp.value[2]); }
+            setPropertyValue(comp, anchorPointProp, newA3D);
+
+            var targetWorld = currentLayer.toWorld([fx, fy]);
+            var curPos = positionProp.value;
+            var corrected = [];
+            for(var d3 = 0; d3 < curPos.length; d3++){
+                var corr = (d3 < 3) ? (oldAnchorWorld[d3] - targetWorld[d3]) : 0;
+                corrected.push(curPos[d3] + corr);
+            }
+            setPropertyValue(comp, positionProp, corrected);
+            continue; // 3D path fully handles this layer (undo group still open)
         } else {
-            newAnchorValue = [(left + width / 2), (top + height / 2)];
+            newAnchorValue = [fx, fy];
         }
 
+        // ---- 2D layers ----
         // Keep the layer visually in place: when the anchor moves by delta,
-        // the position must move by the same delta (in layer space). Works
-        // for both 2D and 3D layers regardless of how many components each
-        // transform property has.
-        var dims = Math.max(newAnchorValue.length, initialAnchorValue.length, initialPositionValue.length);
-        var positionDelta = [];
+        // the position must move by the same delta (in layer space).
+        var initialPositionValue2D = currentLayer.property("ADBE Transform Group").property("ADBE Position").value;
+        var initialAnchorValue2D = currentLayer.property("ADBE Transform Group").property("ADBE Anchor Point").value;
+        var dims = Math.max(newAnchorValue.length, initialAnchorValue2D.length, initialPositionValue2D.length);
         var newPositionValue = [];
         for(var d = 0; d < dims; d++){
             var na = (d < newAnchorValue.length) ? newAnchorValue[d] : 0;
-            var ia = (d < initialAnchorValue.length) ? initialAnchorValue[d] : 0;
-            var ip = (d < initialPositionValue.length) ? initialPositionValue[d] : 0;
-            positionDelta.push(na - ia);
+            var ia = (d < initialAnchorValue2D.length) ? initialAnchorValue2D[d] : 0;
+            var ip = (d < initialPositionValue2D.length) ? initialPositionValue2D[d] : 0;
             newPositionValue.push(ip + (na - ia));
         }
         if(newAnchorValue.length < dims){
@@ -353,27 +361,3 @@ function addNullToLayers(){
 bindEvent(UI.extraActionGroup.nullGroup.addNullBtn, "onClick", function(){
     addNullToLayers();
 });
-
-// Immediate apply: whenever a grid cell gets checked, the anchor point is
-// applied right away (no Apply button / Auto Apply checkbox / offset fields
-// anymore). Guarded so it only runs once per state change.
-var lastAppliedKey = null;
-function applyAnchorPointOnControlChange(){
-    var currentKey = getAnchorStateKey();
-    if(lastAppliedKey === currentKey) return; // already applied with these settings
-    lastAppliedKey = currentKey;
-    applyAnchorPoint();
-}
-
-// Anchor point grid cells (rows 1-3): onClick fires after the exclusivity
-// handler above has unchecked every other cell.
-for(var r = 1; r <= 3; r++){
-    var row = UI.anchorPointGroup['row' + r];
-    if(!row) continue;
-    for(var c = 0; c < row.children.length; c++){
-        bindEvent(row.children[c], "onClick", function(){
-            applyAnchorPointOnControlChange();
-        });
-    }
-}
-
