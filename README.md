@@ -34,14 +34,14 @@ All original credit for the script and its concept goes to the upstream author. 
 3. Restart EffectsCraft so the panel gets picked up.
 
 ## Options
-- Anchor Point: select the point in the layer where the anchor point will be moved to
+- Anchor Point: select the point in the layer where the anchor point will be moved to (radio grid)
 - Offset Point: offset to the anchor point from the selected layer position
-- Add Null: add null to anchor point
-- Parent to Null: parent layer to null
-- Rotate Null: rotate the created null to match the layer rotation
-- Auto Apply: auto apply anchor point when activated (next to the Apply button)
+- Add Null (button): add a null object at the new anchor point position of the selected layer(s)
+- Parent to Null (button): parent the selected layer(s) to the last null created by the script (click *Add Null* first)
+- Auto Apply (checkbox, next to the Apply button): automatically re-applies the **anchor point** only (radio grid + offset fields) whenever those controls change while it is activated. The *Add Null* and *Parent to Null* buttons are manual actions and are **not** affected by Auto Apply.
+- Tooltips: every control in the panel has a tooltip explaining what it does
 
-> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression* option and adds an *Auto Apply* checkbox that re-runs the script automatically whenever any control changes while it is activated.
+> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression* and *Rotate Null* options, converts *Add Null* / *Parent to Null* from checkboxes into standalone buttons, adds an *Auto Apply* checkbox limited to the anchor point controls, and adds tooltips for all UI elements.
 
 ## Examples
 Work in progress.

@@ -37,11 +37,8 @@ var resourceString =
     },\
     extraActionGroup: Group{orientation: 'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
         nullGroup: Group{orientation: 'column', alignChildren: ['left', 'top'],\
-            addNull: Checkbox{text: 'Add Null'},\
-            parentToNull: Checkbox{text: 'Parent to Null'},\
-        },\
-        otherGroup: Group{orientation: 'column', alignChildren: ['left', 'top'],\
-            rotateNull: Checkbox{text: 'Rotate Null'},\
+            addNullBtn: Button{text: 'Add Null'},\
+            parentToNullBtn: Button{text: 'Parent to Null'},\
         },\
     },\
     bottomRow: Group{orientation: 'row', alignment: ['fill', 'bottom'], alignChildren: ['center', 'center'],\
@@ -120,10 +117,27 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
         }
     }
 
-    // Other buttons default states
+    // Tooltips for every control
+    UI.anchorPointGroup.helpTip = "Choose where to move the anchor point";
+    var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
+    for(var r = 1; r <= 3; r++){
+        var row = anchorPointGroup['row' + r];
+        for(var c = 0; c < row.children.length; c++){
+            row.children[c].helpTip = "Set anchor point to " + tooltipGrid[(r - 1) * 3 + c] + " of the layer";
+        }
+    }
+    offsetAnchorPoint.helpTip = "Offset the anchor point position by X, Y and Z values (in pixels)";
+    offsetAnchorPoint.xText.helpTip = "Horizontal offset (X) in pixels";
+    offsetAnchorPoint.yText.helpTip = "Vertical offset (Y) in pixels";
+    offsetAnchorPoint.zText.helpTip = "Depth offset (Z) in pixels (for 3D layers)";
+    nullGroup.addNullBtn.helpTip = "Create a null object at the new anchor point position of the selected layer(s)";
+    nullGroup.parentToNullBtn.helpTip = "Parent the selected layer(s) to the created null. Click 'Add Null' first";
+    UI.bottomRow.autoApply.helpTip = "Automatically apply the anchor point change whenever an anchor point option or offset value changes";
+    UI.applyButton.helpTip = "Apply the anchor point change to the selected layer(s)";
+    UI.autoApplyHint.helpTip = "Auto Apply only affects the anchor point (radio buttons and offset fields), not the null buttons";
+
+    // Default state for the radio selection
     anchorPointGroup.row2.b.value = true;
-    nullGroup.addNull.value = false;
-    nullGroup.parentToNull.value = false;
 
     return UI;
 }
@@ -190,34 +204,70 @@ function getBoundingBox(layer) {
     return boundingBox;
 }
 
-function moveAnchorPoint(){
+var lastAnchorState = null; // { key: "x|y|z|radio", layer: layerRef, positionValue, anchorValue }
+
+// Guard against runtime errors (e.g. no comp / no layer selected)
+function validateSelection(){
     var comp = app.project.activeItem;
+    if(!(comp && comp instanceof CompItem)){
+        alert("Please open and select a composition first.");
+        return null;
+    }
     var layers = comp.selectedLayers;
+    if(layers.length === 0){
+        alert("Please select at least one layer.");
+        return null;
+    }
+    return { comp: comp, layers: layers };
+}
+
+// Build a unique key for the current anchor point controls state
+function getAnchorStateKey(){
+    var selRadio = "";
+    for(var r = 1; r <= 3; r++){
+        var row = UI.anchorPointGroup['row' + r];
+        for(var c = 0; c < row.children.length; c++){
+            if(row.children[c].value){
+                selRadio = "row" + r + "." + row.children[c].text;
+            }
+        }
+    }
+    return [
+        UI.offsetAnchorPoint.xText.text,
+        UI.offsetAnchorPoint.yText.text,
+        UI.offsetAnchorPoint.zText.text,
+        selRadio
+    ].join("|");
+}
+
+// Move the anchor point only. If doUndo is true, the previous auto-applied
+// anchor/position values are restored first so the layer does not shift twice.
+function applyAnchorPoint(doUndo){
+    var selection = validateSelection();
+    if(selection == null) return;
+    var comp = selection.comp;
+    var layers = selection.layers;
 
     app.beginUndoGroup("Manipulate Anchor Point");
+
+    // Undo the previous auto-apply (same layer, different settings) before re-applying
+    if(doUndo && lastAnchorState != null && lastAnchorState.layer === layers[0]){
+        try {
+            lastAnchorState.layer.property("ADBE Transform Group").property("ADBE Position").setValue(lastAnchorState.positionValue);
+            lastAnchorState.layer.property("ADBE Transform Group").property("ADBE Anchor Point").setValue(lastAnchorState.anchorValue);
+        } catch(e){}
+    }
 
     for(var l = 0; l < layers.length; l++){
         var currentLayer = layers[l];
         var currentTime = comp.time;
         var positionProp = currentLayer.property("ADBE Transform Group").property("ADBE Position");
         var anchorPointProp = currentLayer.property("ADBE Transform Group").property("ADBE Anchor Point");
-        var scaleProp = currentLayer.property("ADBE Transform Group").property("ADBE Scale");
-        var orientationProp = currentLayer.property("ADBE Transform Group").property("ADBE Orientation");
-        var xRotationProp = currentLayer.property("ADBE Transform Group").property("ADBE Rotate X");
-        var yRotationProp = currentLayer.property("ADBE Transform Group").property("ADBE Rotate Y");
-        var zRotationProp = currentLayer.property("ADBE Transform Group").property("ADBE Rotate Z");
 
         var initialPositionValue = positionProp.value;
         var initialAnchorValue = anchorPointProp.value;
-        var initialScaleProp = scaleProp.value;
-        var initialOrientationProp = orientationProp.value;
-        var initialXRotationProp = xRotationProp.value;
-        var initialYRotationProp = yRotationProp.value;
-        var initialZRotationProp = zRotationProp.value;
-        var resetRotation = false;
-        var resetScale = false;
 
-        var finalAnchorValue, pointPosition, positionTag, originDistanceToNewAnchorPoint, newAnchorPositionId;
+        var positionTag, newAnchorPositionId;
 
         // Bounding box
         var sourceRect = getBoundingBox(currentLayer);
@@ -235,47 +285,44 @@ function moveAnchorPoint(){
         var offsetX = parseFloat(UI.offsetAnchorPoint.xText.text);
         var offsetY = parseFloat(UI.offsetAnchorPoint.yText.text);
         var offsetZ = parseFloat(UI.offsetAnchorPoint.zText.text);
+        if(isNaN(offsetX)) offsetX = 0;
+        if(isNaN(offsetY)) offsetY = 0;
+        if(isNaN(offsetZ)) offsetZ = 0;
 
         // Radio button selection
         // Row 1
         if (UI.anchorPointGroup.row1.a.value){
-            pointPosition = [left + offsetX, top + offsetY, offsetZ];
             positionTag = "Top Left";
             newAnchorPositionId = 0;
         } else if (UI.anchorPointGroup.row1.b.value){
-            pointPosition = [(left + width / 2) + offsetX, top + offsetY, offsetZ];
             positionTag = "Top Center";
             newAnchorPositionId = 1;
         } else if (UI.anchorPointGroup.row1.c.value){
-            pointPosition = [(left + width) + offsetX, top + offsetY, offsetZ];
             positionTag = "Top Right";
             newAnchorPositionId = 2;
         // Row 2
         } else if (UI.anchorPointGroup.row2.a.value){
-            pointPosition = [left + offsetX, (top + height / 2) + offsetY, offsetZ];
             positionTag = "Center Left";
             newAnchorPositionId = 3;
         } else if (UI.anchorPointGroup.row2.b.value){
-            pointPosition = [(left + width / 2) + offsetX, (top + height / 2) + offsetY, offsetZ];
             positionTag = "Center";
             newAnchorPositionId = 4;
         } else if (UI.anchorPointGroup.row2.c.value){
-            pointPosition = [(left + width) + offsetX, (top + height / 2) + offsetY, offsetZ];
             positionTag = "Center Right";
             newAnchorPositionId = 5;
         // Row 3
         } else if (UI.anchorPointGroup.row3.a.value){
-            pointPosition = [left + offsetX, (top + height) + offsetY, offsetZ];
             positionTag = "Bottom Left";
             newAnchorPositionId = 6;
         } else if (UI.anchorPointGroup.row3.b.value){
-            pointPosition = [(left + width / 2) + offsetX, (top + height) + offsetY, offsetZ];
             positionTag = "Bottom Center";
             newAnchorPositionId = 7;
         } else if (UI.anchorPointGroup.row3.c.value){
-            pointPosition = [(left + width) + offsetX, (top + height) + offsetY, offsetZ];
             positionTag = "Bottom Right";
             newAnchorPositionId = 8;
+        } else {
+            positionTag = "Center";
+            newAnchorPositionId = 4;
         }
 
         // Position + Anchor Point workaround - Charles Bordenave's solution is the best I found.
@@ -317,59 +364,103 @@ function moveAnchorPoint(){
         setPropertyValue(comp, positionProp, newPositionValue);
         setPropertyValue(comp, anchorPointProp, newAnchorValue);
 
-        // Create null
-        var ifAddNull = UI.extraActionGroup.nullGroup.addNull.value;
-        var ifParentToNull = UI.extraActionGroup.nullGroup.parentToNull.value;
-        if(ifAddNull){
-            var nullCtrl = comp.layers.addNull();
-            nullCtrl.name = "Null - " + currentLayer.name + " - " + positionTag;
-            nullCtrl.moveBefore(currentLayer); // Move created null before currentLayer
-
-            nullCtrl.parent = currentLayer.parent; // If layer has a parent, the nullCtrl parent will be set between the layer and its parent
-            nullCtrl.threeDLayer = currentLayer.threeDLayer; // If current layer is threeD (true), nullCtrl is threeD (true) and vice versa
-
-            var nullCtrlProps = nullCtrl.property("ADBE Transform Group");
-            var nullPositionProp = nullCtrlProps.property("ADBE Position");
-            var nullRotationProp = nullCtrlProps.property("ADBE Orientation");
-            var nullRotationProp = nullCtrlProps.property("ADBE Rotate X");
-            var nullRotationProp = nullCtrlProps.property("ADBE Rotate Y");
-            var nullRotationProp = nullCtrlProps.property("ADBE Rotate Z");
-            setPropertyValue(comp, nullPositionProp, newPositionValue)
-
-            if(UI.extraActionGroup.otherGroup.rotateNull.value){
-                if(nullCtrl.threeD){
-                    setPropertyValue(comp, nullRotationProp, initialOrientationProp);
-                    setPropertyValue(comp, nullRotationProp, initialXRotationProp);
-                    setPropertyValue(comp, nullRotationProp, initialYRotationProp);
-                    setPropertyValue(comp, nullRotationProp, initialZRotationProp);
-                }
-                setPropertyValue(comp, nullRotationProp, initialZRotationProp);
-            }
-
-            currentLayer.selected = true;
-            nullCtrl.selected = false;
-        }
-
-        // Parent layer to null
-        if(ifParentToNull){
-            currentLayer.parent = nullCtrl;
-        }
-
+        // Remember applied state so Auto Apply can undo-then-redo on the same layer
+        lastAnchorState = {
+            key: getAnchorStateKey(),
+            layer: layers[0],
+            positionValue: initialPositionValue,
+            anchorValue: initialAnchorValue
+        };
     }
     app.endUndoGroup();
 }
 
-// Apply on button click
-UI.applyButton.onClick = function(){
-    moveAnchorPoint();
+// Create a null object at the new anchor point position of the selected layer(s)
+function addNullToLayers(){
+    var selection = validateSelection();
+    if(selection == null) return;
+    var comp = selection.comp;
+    var layers = selection.layers;
+
+    app.beginUndoGroup("Add Null at Anchor Point");
+
+    for(var l = 0; l < layers.length; l++){
+        var currentLayer = layers[l];
+        var positionProp = currentLayer.property("ADBE Transform Group").property("ADBE Position");
+        var newPositionValue = positionProp.value;
+
+        var nullCtrl = comp.layers.addNull();
+        nullCtrl.name = "Null - " + currentLayer.name;
+        nullCtrl.moveBefore(currentLayer); // Move created null before currentLayer
+
+        nullCtrl.parent = currentLayer.parent; // If layer has a parent, the nullCtrl parent will be set between the layer and its parent
+        nullCtrl.threeDLayer = currentLayer.threeDLayer; // If current layer is threeD (true), nullCtrl is threeD (true) and vice versa
+
+        var nullCtrlProps = nullCtrl.property("ADBE Transform Group");
+        var nullPositionProp = nullCtrlProps.property("ADBE Position");
+        setPropertyValue(comp, nullPositionProp, newPositionValue);
+
+        currentLayer.selected = true;
+        nullCtrl.selected = false;
+    }
+    app.endUndoGroup();
 }
 
-// Auto Apply: run the script automatically whenever any control changes
-// while the "Auto Apply" checkbox is activated
+// Parent the selected layer(s) to the most recently created null
+function parentLayersToNull(){
+    var selection = validateSelection();
+    if(selection == null) return;
+    var comp = selection.comp;
+    var layers = selection.layers;
+
+    // Find the last created null (by name prefix set in addNullToLayers)
+    var lastNull = null;
+    for(var i = comp.layers.length; i >= 1; i--){
+        var lyr = comp.layer(i);
+        if(lyr instanceof AVLayer && lyr.source != null && lyr.source.name === "Null"){
+            if(lyr.name.indexOf("Null - ") === 0){
+                lastNull = lyr;
+                break;
+            }
+        }
+    }
+
+    if(lastNull == null){
+        alert("No null created by this script was found.\nClick 'Add Null' first.");
+        return;
+    }
+
+    app.beginUndoGroup("Parent Layers to Null");
+    for(var l = 0; l < layers.length; l++){
+        layers[l].parent = lastNull;
+    }
+    app.endUndoGroup();
+}
+
+// Apply button: runs the anchor point move
+UI.applyButton.onClick = function(){
+    applyAnchorPoint(true);
+}
+
+// Null buttons: independent actions, NOT affected by Auto Apply
+UI.extraActionGroup.nullGroup.addNullBtn.onClick = function(){
+    addNullToLayers();
+}
+UI.extraActionGroup.nullGroup.parentToNullBtn.onClick = function(){
+    parentLayersToNull();
+}
+
+// Auto Apply: re-applies the ANCHOR POINT only (radio buttons + offset fields)
+// whenever those controls change while the checkbox is activated.
+var autoApplyBoundKey = null;
 function bindAutoApply(element){
     element.onChange = function(){
         if(UI.bottomRow.autoApply.value){
-            moveAnchorPoint();
+            var currentKey = getAnchorStateKey();
+            if(autoApplyBoundKey !== currentKey){
+                autoApplyBoundKey = currentKey;
+                applyAnchorPoint(true);
+            }
         }
     };
 }
@@ -386,8 +477,3 @@ for(var r = 1; r <= 3; r++){
 bindAutoApply(UI.offsetAnchorPoint.xText);
 bindAutoApply(UI.offsetAnchorPoint.yText);
 bindAutoApply(UI.offsetAnchorPoint.zText);
-
-// Extra action checkboxes
-bindAutoApply(UI.extraActionGroup.nullGroup.addNull);
-bindAutoApply(UI.extraActionGroup.nullGroup.parentToNull);
-bindAutoApply(UI.extraActionGroup.otherGroup.rotateNull);
