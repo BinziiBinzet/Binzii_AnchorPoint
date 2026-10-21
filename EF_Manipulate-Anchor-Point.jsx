@@ -1,11 +1,11 @@
 ﻿/**========================================================================
- * ?                  EF_Manipulate-Anchor-Point.jsx
- * @author            Eveline Falcão (https://evelinefalcao.com)
- * @email             hello@evelinefalcao.com
+ * ?                  Binzii_AnchorPoint.jsx
+ * @author            Binz1 Animation
+ * @email             binz1.anima@gmail.com
  * @version           1.0.0
- * @createdFor        Adobe After Effects CC 2024 (Version 24.1.0 Build 78)
- * @description       Move Anchor Point to selected layer point. Can add and parent a null to the selected layer point. Can apply an expression to pin the anchor point.
- * @thankyou          Charles Bordenave (https://www.nabscripts.com) for RepositionAnchorPoint (version: 3.9) and Zack Lovatt (https://lova.tt/) for zl_CreatePivotalNull (version: 1.1).
+ * @createdFor        EffectCraft
+ * @description       Move Anchor Point to selected layer point. Can add and parent a null to the selected layer point.
+ * @thankyou          Charles Bordenave (https://www.nabscripts.com) for RepositionAnchorPoint (version: 3.9) and Zack Lovatt (https://lova.tt/) for zl_CreatePivotalNull (version: 1.1) and Eveline Falcão.
  *========================================================================**/
 
 var resourceString = 
