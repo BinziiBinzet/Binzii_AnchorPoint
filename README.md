@@ -3,8 +3,13 @@
 
 ScriptUI that moves the anchor point of a layer, with options to create a null and/or add anchor point expression and offset it.
 
+## About This Fork
+
+This repository is a fork of [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point), originally created by **[Eveline Falcão](https://github.com/evefalcao)**. All credit for the original script and its concept goes to her. This fork exists to keep my own modifications and experiments separate from the upstream project.
+
 ## Table of Contents
 
+- [About This Fork](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#about-this-fork)
 - [Installation](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#installation)
 - [Options](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#options)
 - [Examples](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#examples)
