@@ -11,29 +11,32 @@
 // 3x3 grid of unlabeled square buttons. Clicking a cell immediately applies
 // that anchor point. Exclusivity is handled in code (pressing one cell
 // releases all others), so multiple cells can never be active at once.
+// Layout follows the proven "stack group + centered rows" pattern:
+//   win (fill/fill)
+//     └─ container (stack, center/center)
+//          ├─ buttons row 1..3 (center/center)
+//          └─ Add Null button (fills container width)
+// Because every row lives inside a single stack container that is centered,
+// the whole UI is perfectly centered in the panel on any host.
 var resourceString =
-"group{orientation:'column', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
-    anchorPointGroup: Group{orientation:'column', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
-        row1: Group{orientation:'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+"group{orientation:'column', alignment: ['fill', 'fill'], alignChildren: ['fill', 'top'],\
+    container: Group{orientation:'stack', alignment: ['center', 'center'], spacing: 4, margins: 8,\
+        row1: Group{orientation:'row', alignment: ['center', 'center'], alignChildren: ['center', 'center'], spacing: 4, margins: 0,\
             a: Button{preferredSize: [30, 30]},\
             b: Button{preferredSize: [30, 30]},\
             c: Button{preferredSize: [30, 30]},\
         },\
-        row2: Group{orientation:'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+        row2: Group{orientation:'row', alignment: ['center', 'center'], alignChildren: ['center', 'center'], spacing: 4, margins: 0,\
             a: Button{preferredSize: [30, 30]},\
             b: Button{preferredSize: [30, 30]},\
             c: Button{preferredSize: [30, 30]},\
         },\
-        row3: Group{orientation:'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'center'], spacing: 4,\
+        row3: Group{orientation:'row', alignment: ['center', 'center'], alignChildren: ['center', 'center'], spacing: 4, margins: 0,\
             a: Button{preferredSize: [30, 30]},\
             b: Button{preferredSize: [30, 30]},\
             c: Button{preferredSize: [30, 30]},\
         },\
-    },\
-    extraActionGroup: Group{orientation: 'column', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
-        nullGroup: Group{orientation: 'column', alignChildren: ['center', 'top'],\
-            addNullBtn: Button{text: 'Add Null', preferredSize: [-1, 28]},\
-        },\
+        addNullBtn: Button{text: 'Add Null', preferredSize: [-1, 28]},\
     }\
 }"
 
@@ -62,6 +65,15 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     var pal = (thisObj instanceof Panel) ? thisObj : new Window("palette", scriptName, undefined, {resizeable: true});
     if (pal == null) return pal;
 
+    // Panel itself: children fill the whole area (the centered "container"
+    // group inside takes care of putting everything in the middle).
+    try {
+        pal.orientation = "column";
+        pal.alignChildren = ["fill", "fill"];
+        pal.margins = 4;
+        pal.spacing = 0;
+    } catch(e){ /* host may not allow these - ignore */ }
+
     var UI = pal.add(userInterfaceString);
 
     try {
@@ -78,43 +90,32 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
         pal.show();
     }
 
-    var anchorPointGroup = UI.anchorPointGroup;
-    var nullGroup = UI.extraActionGroup.nullGroup;
-    
+    var container = UI.container; // stack group holding the 3 rows + Add Null button
+
     // The 3x3 grid is made of plain (unlabeled) Buttons. ScriptUI buttons have
     // no persistent "checked" state, so the selected cell is tracked in a
-    // variable: clicking a cell makes it THE active cell (all others revert to
-    // their normal look automatically) and applies the anchor point right away.
-    // Multi-select is therefore impossible by design.
+    // variable: clicking a cell makes it THE active cell and applies the
+    // anchor point right away. Multi-select is impossible by design.
     var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
 
-    function highlightActiveCell(activeRow, activeCol){
-        for(var r = 1; r <= 3; r++){
-            var row = anchorPointGroup['row' + r];
-            if(!row) continue;
-            for(var i = 0; i < row.children.length; i++){
-                try {
-                    if(r === activeRow && i === activeCol){
-                        row.children[i].notify("onDraw"); // repaint pressed/active look where supported
-                    }
-                } catch(e){}
-            }
-        }
-    }
+    // NOTE: this host does NOT provide a global `window` object (that caused
+    // "ReferenceError: window is not defined"). Selected-cell state lives in
+    // plain script-scoped variables shared via the globals below.
+    selectedAnchorRow = 2;
+    selectedAnchorCol = 1;
 
-    setHelpTip(anchorPointGroup, "Click a position to instantly move the anchor point there");
+    setHelpTip(container, "Click a position to instantly move the anchor point there");
     for(var r = 1; r <= 3; r++){
         (function(rowIdx){
-            var row = anchorPointGroup['row' + rowIdx];
+            var row = container['row' + rowIdx];
             if(!row) return;
             for(var c = 0; c < row.children.length; c++){
                 (function(colIdx){
                     var label = tooltipGrid[(rowIdx - 1) * 3 + colIdx];
                     setHelpTip(row.children[colIdx], "Move anchor point to " + label + " of the layer (applies instantly)");
                     bindEvent(row.children[colIdx], "onClick", function() {
-                        window.selectedAnchorRow = rowIdx;
-                        window.selectedAnchorCol = colIdx;
-                        highlightActiveCell(rowIdx, colIdx);
+                        selectedAnchorRow = rowIdx;
+                        selectedAnchorCol = colIdx;
                         applyAnchorPoint();
                     });
                 })(c);
@@ -122,7 +123,7 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
         })(r);
     }
 
-    setHelpTip(nullGroup.addNullBtn, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
+    setHelpTip(container.addNullBtn, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
 
     return UI;
 }
@@ -211,9 +212,11 @@ function validateSelection(){
 }
 
 // Which grid cell is currently active (tracked when a button is clicked).
+// Declared WITHOUT `var` on purpose: the UI builder assigns to these too, and
+// this host has no `window` object, so they must be plain script globals.
 // Defaults to Center so the very first click always has a valid state.
-window.selectedAnchorRow = 2;
-window.selectedAnchorCol = 1;
+selectedAnchorRow = 2;
+selectedAnchorCol = 1;
 
 // Move the anchor point to the selected grid position. Each click computes
 // the target from the CURRENT bounding box, so switching positions never
@@ -247,8 +250,8 @@ function applyAnchorPoint(){
 
         // Grid selection: which cell is active (tracked on click). Compute the
         // target corner/edge/center of the bounding box in LAYER space.
-        var selRow = window.selectedAnchorRow || 2;
-        var selCol = (window.selectedAnchorCol === undefined) ? 1 : window.selectedAnchorCol;
+        var selRow = selectedAnchorRow || 2;
+        var selCol = (selectedAnchorCol === undefined) ? 1 : selectedAnchorCol;
 
         var fx, fy; // fractional position within the bounding box
         if(selCol === 0)      fx = left;
@@ -358,6 +361,6 @@ function addNullToLayers(){
 
 // "Add Null" button: creates a null AT the anchor point position and parents
 // the selected layer(s) to it in one click.
-bindEvent(UI.extraActionGroup.nullGroup.addNullBtn, "onClick", function(){
+bindEvent(UI.container.addNullBtn, "onClick", function(){
     addNullToLayers();
 });
