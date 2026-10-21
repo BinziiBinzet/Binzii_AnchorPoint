@@ -24,11 +24,14 @@ All original credit for the script and its concept goes to the upstream author. 
 - **License:** CC BY-SA 4.0 (same as upstream — attribution and share-alike terms apply)
 
 ## Installation
-1. Download the [latest release](https://github.com/evefalcao/EF_Manipulate-Anchor-Point/archive/refs/heads/main.zip) of the script.
-2. Copy the script file (`Binzii_AnchorPoint.jsx`) to your After Effects scripts folder:
-    - **Windows**: `C:\Program Files\Adobe\Adobe After Effects (version)\Support Files\Scripts\ScriptUI Panels`
-    - **Mac**: `/Applications/Adobe After Effects (version)/Scripts/ScriptUI Panels`
-3. Alternatively, in After Effects, go to `File > Scripts > Install ScriptUI Panel` select the script file (`Binzii_AnchorPoint.jsx`) and restart After Effects.
+
+> **Note:** This fork is intended to be used with **EffectsCraft**, not Adobe After Effects.
+
+1. Download the latest version of this script (`Binzii_AnchorPoint.jsx`).
+2. Copy the script file into your EffectsCraft ScriptUI Panels folder:
+    - **Windows**: `%APPDATA%\EffectCraft\Scripts\ScriptUI Panels\`
+      (this resolves to `AppData\Roaming\EffectCraft\Scripts\ScriptUI Panels` inside your user profile — no need to hardcode a specific username or drive letter)
+3. Restart EffectsCraft so the panel gets picked up.
 
 ## Options
 - Anchor Point: select the point in the layer where the anchor point will be moved to
