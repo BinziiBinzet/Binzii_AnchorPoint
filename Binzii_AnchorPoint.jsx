@@ -117,24 +117,35 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
         }
     }
 
-    // Tooltips for every control
-    UI.anchorPointGroup.helpTip = "Choose where to move the anchor point";
+    // Tooltips for every control.
+    // NOTE: helpTip is NOT supported in some hosts (e.g. EffectsCraft); assigning
+    // it to an element that doesn't exist throws "cannot convert null or undefined
+    // to object". Every assignment below is therefore wrapped in try/catch so the
+    // panel always builds successfully regardless of host support.
+    function setHelpTip(element, tip){
+        try {
+            if(element){ element.helpTip = tip; }
+        } catch(e){ /* host does not support helpTip - ignore */ }
+    }
+
     var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
+    setHelpTip(anchorPointGroup, "Choose where to move the anchor point");
     for(var r = 1; r <= 3; r++){
         var row = anchorPointGroup['row' + r];
+        if(!row) continue;
         for(var c = 0; c < row.children.length; c++){
-            row.children[c].helpTip = "Set anchor point to " + tooltipGrid[(r - 1) * 3 + c] + " of the layer";
+            setHelpTip(row.children[c], "Set anchor point to " + tooltipGrid[(r - 1) * 3 + c] + " of the layer");
         }
     }
-    offsetAnchorPoint.helpTip = "Offset the anchor point position by X, Y and Z values (in pixels)";
-    offsetAnchorPoint.xText.helpTip = "Horizontal offset (X) in pixels";
-    offsetAnchorPoint.yText.helpTip = "Vertical offset (Y) in pixels";
-    offsetAnchorPoint.zText.helpTip = "Depth offset (Z) in pixels (for 3D layers)";
-    nullGroup.addNullBtn.helpTip = "Create a null object at the new anchor point position of the selected layer(s)";
-    nullGroup.addParentToNullBtn.helpTip = "Create a new null object AND parent the selected layer(s) to it in one click";
-    UI.bottomRow.autoApply.helpTip = "Automatically apply the anchor point change whenever an anchor point option or offset value changes";
-    UI.applyButton.helpTip = "Apply the anchor point change to the selected layer(s)";
-    UI.autoApplyHint.helpTip = "Auto Apply only affects the anchor point (radio buttons and offset fields), not the null buttons";
+    setHelpTip(offsetAnchorPoint, "Offset the anchor point position by X, Y and Z values (in pixels)");
+    setHelpTip(offsetAnchorPoint.xText, "Horizontal offset (X) in pixels");
+    setHelpTip(offsetAnchorPoint.yText, "Vertical offset (Y) in pixels");
+    setHelpTip(offsetAnchorPoint.zText, "Depth offset (Z) in pixels (for 3D layers)");
+    setHelpTip(nullGroup.addNullBtn, "Create a null object at the new anchor point position of the selected layer(s)");
+    setHelpTip(nullGroup.addParentToNullBtn, "Create a new null object AND parent the selected layer(s) to it in one click");
+    setHelpTip(UI.bottomRow ? UI.bottomRow.autoApply : null, "Automatically apply the anchor point change whenever an anchor point option or offset value changes");
+    setHelpTip(UI.applyButton, "Apply the anchor point change to the selected layer(s)");
+    setHelpTip(UI.autoApplyHint, "Auto Apply only affects the anchor point (radio buttons and offset fields), not the null buttons");
 
     // Default state for the radio selection
     anchorPointGroup.row2.b.value = true;
@@ -418,34 +429,43 @@ UI.applyButton.onClick = function(){
     applyAnchorPoint(true);
 }
 
+// Safe event binding: some hosts (e.g. EffectsCraft) may not support assigning
+// onClick/onChange on certain elements - wrap in try/catch so the panel still loads.
+function bindEvent(element, event, handler){
+    try {
+        if(element){ element[event] = handler; }
+    } catch(e){ /* not supported by this host - ignore */ }
+}
+
 // Null buttons: independent actions, NOT affected by Auto Apply
 // "Add Null" -> creates a null only (no parenting)
 // "Add Parent to Null" -> creates a null AND parents the layer(s) to it
-UI.extraActionGroup.nullGroup.addNullBtn.onClick = function(){
+bindEvent(UI.extraActionGroup.nullGroup.addNullBtn, "onClick", function(){
     addNullToLayers(false);
-}
-UI.extraActionGroup.nullGroup.addParentToNullBtn.onClick = function(){
+});
+bindEvent(UI.extraActionGroup.nullGroup.addParentToNullBtn, "onClick", function(){
     addNullToLayers(true);
-}
+});
 
 // Auto Apply: re-applies the ANCHOR POINT only (radio buttons + offset fields)
 // whenever those controls change while the checkbox is activated.
 var autoApplyBoundKey = null;
 function bindAutoApply(element){
-    element.onChange = function(){
-        if(UI.bottomRow.autoApply.value){
+    bindEvent(element, "onChange", function(){
+        if(UI.bottomRow && UI.bottomRow.autoApply && UI.bottomRow.autoApply.value){
             var currentKey = getAnchorStateKey();
             if(autoApplyBoundKey !== currentKey){
                 autoApplyBoundKey = currentKey;
                 applyAnchorPoint(true);
             }
         }
-    };
+    });
 }
 
 // Anchor point radio buttons (rows 1-3)
 for(var r = 1; r <= 3; r++){
     var row = UI.anchorPointGroup['row' + r];
+    if(!row) continue;
     for(var c = 0; c < row.children.length; c++){
         bindAutoApply(row.children[c]);
     }
