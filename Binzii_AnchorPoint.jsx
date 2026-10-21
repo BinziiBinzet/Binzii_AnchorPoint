@@ -38,12 +38,7 @@ var resourceString =
     extraActionGroup: Group{orientation: 'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
         nullGroup: Group{orientation: 'column', alignChildren: ['left', 'top'],\
             addNullBtn: Button{text: 'Add Null'},\
-            addParentToNullBtn: Button{text: 'Add Parent to Null'},\
         },\
-    },\
-    bottomRow: Group{orientation: 'row', alignment: ['fill', 'bottom'], alignChildren: ['center', 'center'],\
-        autoApply: Checkbox{text: 'Auto Apply'},\
-        applyButton: Button{text: 'Apply'}\
     }\
 }"
 
@@ -92,33 +87,29 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     var offsetAnchorPoint = UI.offsetAnchorPoint;
     var nullGroup = UI.extraActionGroup.nullGroup;
     
-    // Check the radio button states
-    // Row 1
-    for(var c = 0; c < anchorPointGroup.row1.children.length; c++){
-        bindEvent(anchorPointGroup.row1.children[c], "onClick", function() {
-            for (var i = 0; i < anchorPointGroup.row1.children.length; i++) {
-                anchorPointGroup.row2.children[i].value = false;
-                anchorPointGroup.row3.children[i].value = false;
+    // Radio exclusivity across the 3x3 grid. The actual anchor point move is
+    // triggered later (in applyAnchorPointOnControlChange) as soon as a radio
+    // is clicked - there is no Apply button anymore.
+    function clearOtherRows(clickedRow){
+        for(var r = 1; r <= 3; r++){
+            if(r === clickedRow) continue;
+            var row = anchorPointGroup['row' + r];
+            if(!row) continue;
+            for(var i = 0; i < row.children.length; i++){
+                row.children[i].value = false;
             }
-        });
+        }
     }
-    // Row 2
-    for(var c = 0; c < anchorPointGroup.row2.children.length; c++){
-        bindEvent(anchorPointGroup.row2.children[c], "onClick", function() {
-            for (var i = 0; i < anchorPointGroup.row2.children.length; i++) {
-                anchorPointGroup.row1.children[i].value = false;
-                anchorPointGroup.row3.children[i].value = false;
+    for(var r = 1; r <= 3; r++){
+        (function(rowIdx){
+            var row = anchorPointGroup['row' + rowIdx];
+            if(!row) return;
+            for(var c = 0; c < row.children.length; c++){
+                bindEvent(row.children[c], "onClick", function() {
+                    clearOtherRows(rowIdx);
+                });
             }
-        });
-    }
-    // Row 3
-    for(var c = 0; c < anchorPointGroup.row3.children.length; c++){
-        bindEvent(anchorPointGroup.row3.children[c], "onClick", function() {
-            for (var i = 0; i < anchorPointGroup.row3.children.length; i++) {
-                anchorPointGroup.row1.children[i].value = false;
-                anchorPointGroup.row2.children[i].value = false;
-            }
-        });
+        })(r);
     }
 
     // Default state for the offset value
@@ -154,10 +145,7 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     setHelpTip(offsetAnchorPoint.xText, "Horizontal offset (X) in pixels");
     setHelpTip(offsetAnchorPoint.yText, "Vertical offset (Y) in pixels");
     setHelpTip(offsetAnchorPoint.zText, "Depth offset (Z) in pixels (for 3D layers)");
-    setHelpTip(nullGroup.addNullBtn, "Create a null object at the new anchor point position of the selected layer(s)");
-    setHelpTip(nullGroup.addParentToNullBtn, "Create a new null object AND parent the selected layer(s) to it in one click");
-    setHelpTip(UI.bottomRow ? UI.bottomRow.autoApply : null, "Automatically apply the anchor point change whenever an anchor point option or offset value changes");
-    setHelpTip(UI.bottomRow ? UI.bottomRow.applyButton : null, "Apply the anchor point change to the selected layer(s)");
+    setHelpTip(nullGroup.addNullBtn, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
 
     // Default state for the radio selection
     anchorPointGroup.row2.b.value = true;
@@ -269,9 +257,10 @@ function getAnchorStateKey(){
     ].join("|");
 }
 
-// Move the anchor point only. If doUndo is true, the previous auto-applied
-// anchor/position values are restored first so the layer does not shift twice.
-function applyAnchorPoint(doUndo){
+// Move the anchor point. The previous auto-applied anchor/position values are
+// restored first so switching options repeatedly does not stack offsets or
+// make the layer shift twice.
+function applyAnchorPoint(){
     var selection = validateSelection();
     if(selection == null) return;
     var comp = selection.comp;
@@ -279,8 +268,8 @@ function applyAnchorPoint(doUndo){
 
     app.beginUndoGroup("Manipulate Anchor Point");
 
-    // Undo the previous auto-apply (same layer, different settings) before re-applying
-    if(doUndo && lastAnchorState != null && lastAnchorState.layer === layers[0]){
+    // Undo the previous apply (same layer, different settings) before re-applying
+    if(lastAnchorState != null && lastAnchorState.layer === layers[0]){
         try {
             lastAnchorState.layer.property("ADBE Transform Group").property("ADBE Position").setValue(lastAnchorState.positionValue);
             lastAnchorState.layer.property("ADBE Transform Group").property("ADBE Anchor Point").setValue(lastAnchorState.anchorValue);
@@ -371,8 +360,10 @@ function applyAnchorPoint(doUndo){
     app.endUndoGroup();
 }
 
-// Create a null object at the new anchor point position of the selected layer(s)
-function addNullToLayers(autoParent){
+// Create a null object at the anchor point position of the selected layer(s)
+// and automatically parent the layer(s) to it. There is only ONE null button
+// now: "Add Null" always creates + parents in one click.
+function addNullToLayers(){
     var selection = validateSelection();
     if(selection == null) return;
     var comp = selection.comp;
@@ -396,12 +387,10 @@ function addNullToLayers(autoParent){
         var nullPositionProp = nullCtrlProps.property("ADBE Position");
         setPropertyValue(comp, nullPositionProp, newPositionValue);
 
-        // "Add Parent to Null": parent the layer to the newly created null.
-        // Because the null shares the layer's world position AND inherits its
-        // parent, parenting keeps the layer visually in place (no jump).
-        if(autoParent){
-            currentLayer.parent = nullCtrl;
-        }
+        // Parent the layer to the newly created null. Because the null shares
+        // the layer's world position AND inherits its parent, parenting keeps
+        // the layer visually in place (no jump).
+        currentLayer.parent = nullCtrl;
 
         currentLayer.selected = true;
         nullCtrl.selected = false;
@@ -409,46 +398,42 @@ function addNullToLayers(autoParent){
     app.endUndoGroup();
 }
 
-// Apply button: runs the anchor point move
-bindEvent(UI.bottomRow ? UI.bottomRow.applyButton : null, "onClick", function(){
-    applyAnchorPoint(true);
-});
-
-// Null buttons: independent actions, NOT affected by Auto Apply
-// "Add Null" -> creates a null only (no parenting)
-// "Add Parent to Null" -> creates a null AND parents the layer(s) to it
+// "Add Null" button: creates a null AT the anchor point position and parents
+// the selected layer(s) to it in one click.
 bindEvent(UI.extraActionGroup.nullGroup.addNullBtn, "onClick", function(){
-    addNullToLayers(false);
-});
-bindEvent(UI.extraActionGroup.nullGroup.addParentToNullBtn, "onClick", function(){
-    addNullToLayers(true);
+    addNullToLayers();
 });
 
-// Auto Apply: re-applies the ANCHOR POINT only (radio buttons + offset fields)
-// whenever those controls change while the checkbox is activated.
-var autoApplyBoundKey = null;
-function bindAutoApply(element){
-    bindEvent(element, "onChange", function(){
-        if(UI.bottomRow && UI.bottomRow.autoApply && UI.bottomRow.autoApply.value){
-            var currentKey = getAnchorStateKey();
-            if(autoApplyBoundKey !== currentKey){
-                autoApplyBoundKey = currentKey;
-                applyAnchorPoint(true);
-            }
-        }
-    });
+// Immediate apply: whenever an anchor point radio button or an offset field
+// changes, the anchor point is applied right away (no Apply button / Auto
+// Apply checkbox anymore). Guarded so it only runs once per state change.
+var lastAppliedKey = null;
+function applyAnchorPointOnControlChange(){
+    var currentKey = getAnchorStateKey();
+    if(lastAppliedKey === currentKey) return; // already applied with these settings
+    lastAppliedKey = currentKey;
+    applyAnchorPoint();
 }
 
-// Anchor point radio buttons (rows 1-3)
+// Anchor point radio buttons (rows 1-3): onClick fires immediately after the
+// host-side exclusivity handler clears the other rows.
 for(var r = 1; r <= 3; r++){
     var row = UI.anchorPointGroup['row' + r];
     if(!row) continue;
     for(var c = 0; c < row.children.length; c++){
-        bindAutoApply(row.children[c]);
+        bindEvent(row.children[c], "onClick", function(){
+            applyAnchorPointOnControlChange();
+        });
     }
 }
 
-// Offset fields
-bindAutoApply(UI.offsetAnchorPoint.xText);
-bindAutoApply(UI.offsetAnchorPoint.yText);
-bindAutoApply(UI.offsetAnchorPoint.zText);
+// Offset fields: apply when the value changes (on Enter / focus loss)
+bindEvent(UI.offsetAnchorPoint.xText, "onChange", function(){
+    applyAnchorPointOnControlChange();
+});
+bindEvent(UI.offsetAnchorPoint.yText, "onChange", function(){
+    applyAnchorPointOnControlChange();
+});
+bindEvent(UI.offsetAnchorPoint.zText, "onChange", function(){
+    applyAnchorPointOnControlChange();
+});

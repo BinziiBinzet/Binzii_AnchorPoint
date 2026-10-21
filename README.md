@@ -34,14 +34,12 @@ All original credit for the script and its concept goes to the upstream author. 
 3. Restart EffectsCraft so the panel gets picked up.
 
 ## Options
-- Anchor Point: select the point in the layer where the anchor point will be moved to (radio grid)
-- Offset Point: offset to the anchor point from the selected layer position
-- Add Null (button): create a null object at the new anchor point position of the selected layer(s), **without** parenting
-- Add Parent to Null (button): create a null object **and** parent the selected layer(s) to it in one click (the layer stays visually in place)
-- Auto Apply (checkbox, next to the Apply button): automatically re-applies the **anchor point** only (radio grid + offset fields) whenever those controls change while it is activated. The *Add Null* and *Add Parent to Null* buttons are manual actions and are **not** affected by Auto Apply.
+- Anchor Point: select the point in the layer where the anchor point will be moved to (radio grid). Clicking an option applies the move **immediately** — there is no Apply button.
+- Offset Point: offset to the anchor point from the selected layer position (applied immediately when the value changes)
+- Add Null (button): create a null object at the anchor point position of the selected layer(s) **and automatically parent the layer(s) to it** in one click (the layer stays visually in place)
 - Tooltips: every control in the panel has a tooltip explaining what it does
 
-> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression* and *Rotate Null* options, converts *Add Null* / *Add Parent to Null* into standalone action buttons (the latter creates a null and parents the layer in one click), adds an *Auto Apply* checkbox limited to the anchor point controls, removes the "Auto apply anchor point when activated" hint text, and adds tooltips for all UI elements.
+> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression*, *Rotate Null*, *Apply button* and *Auto Apply checkbox* options. The anchor point is applied instantly whenever a radio option or offset value changes. *Add Null* is a single button that creates a null at the layer's anchor point position and parents the selected layer(s) to it in one click. All UI elements have tooltips.
 
 ## Examples
 Work in progress.
