@@ -34,12 +34,12 @@ All original credit for the script and its concept goes to the upstream author. 
 3. Restart EffectsCraft so the panel gets picked up.
 
 ## Options
-- Anchor Point grid: a clean 3x3 grid of square buttons (no labels) — Top Left, Top Center, ... Bottom Right. Clicking a button moves the anchor point there **instantly**. Only one position can ever be active at a time (multi-select is impossible by design), and every button shows its position in a tooltip.
+- Anchor Point grid: a 3x3 grid of arrow buttons (↖ ↑ ↗ / ← • → / ↙ ↓ ↘) wrapped in a centered panel — Top Left, Top Center, ... Bottom Right. Clicking an arrow moves the anchor point there **instantly**. Buttons have no persistent state, so multi-select is impossible by design; every button shows its position in a tooltip.
 - Add Null (button): create a null object at the anchor point position of the selected layer(s) **and automatically parent the layer(s) to it** in one click (the layer stays visually in place)
 - 3D layer support: anchor point moves are corrected in world space, so rotated 3D layers do not jump/slide when the anchor point changes
 - Tooltips: every control in the panel has a tooltip explaining what it does
 
-> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression*, *Rotate Null*, *Apply button*, *Auto Apply checkbox* and *Offset Point* options, as well as the *"Anchor Point"* group title label. The grid now uses plain buttons instead of radio buttons/checkboxes: each click applies immediately with single-selection guaranteed. 3D-layer anchor math was rewritten to be rotation-safe (world-space correction via `toWorld()`). *Add Null* is a single button that creates a null at the layer's anchor point position and parents the selected layer(s) to it in one click. All UI elements have tooltips, and the whole panel layout is centered using a stack-container pattern compatible with both After Effects and EffectsCraft (no browser-only `window` object is used — script-scoped globals instead).
+> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression*, *Rotate Null*, *Apply button*, *Auto Apply checkbox* and *Offset Point* options, as well as the *"Anchor Point"* group title label. The grid now uses plain arrow buttons instead of radio buttons/checkboxes: each click applies immediately with single-selection guaranteed. 3D-layer anchor math was rewritten to be rotation-safe (world-space correction via `toWorld()`). *Add Null* is a single button that creates a null at the layer's anchor point position and parents the selected layer(s) to it in one click. All UI elements have tooltips. The UI is built with the ScriptUI panel/group pattern (joonas.me style): a bordered panel centers the 3x3 grid inside the palette, with the Add Null button below — fully compatible with EffectsCraft (no browser-only `window` object is used).
 
 ## Examples
 Work in progress.

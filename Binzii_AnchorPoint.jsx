@@ -1,4 +1,4 @@
-﻿/**========================================================================
+/**========================================================================
  * ?                  Binzii_AnchorPoint.jsx
  * @author            Binz1 Animation
  * @email             binz1.anima@gmail.com
@@ -8,45 +8,124 @@
  * @thankyou          Charles Bordenave (https://www.nabscripts.com) for RepositionAnchorPoint (version: 3.9) and Zack Lovatt (https://lova.tt/) for zl_CreatePivotalNull (version: 1.1) and Eveline Falcão.
  *========================================================================**/
 
-// 3x3 grid of unlabeled square buttons. Clicking a cell immediately applies
-// that anchor point. Exclusivity is handled in code (pressing one cell
-// releases all others), so multiple cells can never be active at once.
-// Layout follows the proven "stack group + centered rows" pattern:
-//   win (fill/fill)
-//     └─ container (stack, center/center)
-//          ├─ buttons row 1..3 (center/center)
-//          └─ Add Null button (fills container width)
-// Because every row lives inside a single stack container that is centered,
-// the whole UI is perfectly centered in the panel on any host.
-var resourceString =
-"group{orientation:'column', alignment: ['fill', 'fill'], alignChildren: ['fill', 'top'],\
-    container: Group{orientation:'stack', alignment: ['center', 'center'], spacing: 4, margins: 8,\
-        row1: Group{orientation:'row', alignment: ['center', 'center'], alignChildren: ['center', 'center'], spacing: 4, margins: 0,\
-            a: Button{preferredSize: [30, 30]},\
-            b: Button{preferredSize: [30, 30]},\
-            c: Button{preferredSize: [30, 30]},\
-        },\
-        row2: Group{orientation:'row', alignment: ['center', 'center'], alignChildren: ['center', 'center'], spacing: 4, margins: 0,\
-            a: Button{preferredSize: [30, 30]},\
-            b: Button{preferredSize: [30, 30]},\
-            c: Button{preferredSize: [30, 30]},\
-        },\
-        row3: Group{orientation:'row', alignment: ['center', 'center'], alignChildren: ['center', 'center'], spacing: 4, margins: 0,\
-            a: Button{preferredSize: [30, 30]},\
-            b: Button{preferredSize: [30, 30]},\
-            c: Button{preferredSize: [30, 30]},\
-        },\
-        addNullBtn: Button{text: 'Add Null', preferredSize: [-1, 28]},\
-    }\
-}"
+var panelGlobal = this;
+
+/*
+UI built with the ScriptUI JSON-import pattern from https://scriptui.joonas.me
+A Panel wraps the 3x3 grid of arrow buttons so the whole group is centered
+inside the palette, and the "Add Null" button sits below it.
+*/
+
+// WIN
+// ===
+var win = (panelGlobal instanceof Panel) ? panelGlobal : new Window("palette", undefined, undefined, {resizeable: true});
+if (win == null) {
+    alert("Binzii_AnchorPoint: could not create the panel UI in this host.");
+}
+if (!(panelGlobal instanceof Panel)) win.text = "Binzii Anchor Point";
+win.orientation = "column";
+win.alignChildren = ["center", "center"];
+win.spacing = 12;
+win.margins = 16;
+
+// PANEL1
+// ======
+var panel1 = win.add("panel", undefined, undefined, {name: "panel1"});
+panel1.orientation = "column";
+panel1.alignChildren = ["center", "center"];
+panel1.spacing = 0;
+panel1.margins = 10;
+
+// GROUP1 - top row
+// ======
+var group1 = panel1.add("group", undefined, {name: "group1"});
+group1.orientation = "row";
+group1.alignChildren = ["left", "center"];
+group1.spacing = 10;
+group1.margins = 0;
+
+var LT = group1.add("button", undefined, undefined, {name: "LT"});
+LT.text = "\u2196"; // ↖
+LT.preferredSize.width = 40;
+LT.preferredSize.height = 40;
+
+var CT = group1.add("button", undefined, undefined, {name: "CT"});
+CT.text = "\u2191"; // ↑
+CT.preferredSize.width = 40;
+CT.preferredSize.height = 40;
+
+var RT = group1.add("button", undefined, undefined, {name: "RT"});
+RT.text = "\u2197"; // ↗
+RT.preferredSize.width = 40;
+RT.preferredSize.height = 40;
+
+// GROUP2 - middle row
+// ======
+var group2 = panel1.add("group", undefined, {name: "group2"});
+group2.orientation = "row";
+group2.alignChildren = ["left", "center"];
+group2.spacing = 10;
+group2.margins = 0;
+
+var LL = group2.add("button", undefined, undefined, {name: "LL"});
+LL.text = "\u2190"; // ←
+LL.preferredSize.width = 40;
+LL.preferredSize.height = 40;
+
+var CC = group2.add("button", undefined, undefined, {name: "CC"});
+CC.text = "\u2022"; // • (center marker so the middle cell isn't empty)
+CC.preferredSize.width = 40;
+CC.preferredSize.height = 40;
+
+var RR = group2.add("button", undefined, undefined, {name: "RR"});
+RR.text = "\u2192"; // →
+RR.preferredSize.width = 40;
+RR.preferredSize.height = 40;
+
+// GROUP3 - bottom row
+// ======
+var group3 = panel1.add("group", undefined, {name: "group3"});
+group3.orientation = "row";
+group3.alignChildren = ["left", "center"];
+group3.spacing = 10;
+group3.margins = 0;
+
+var LB = group3.add("button", undefined, undefined, {name: "LB"});
+LB.text = "\u2199"; // ↙
+LB.preferredSize.width = 40;
+LB.preferredSize.height = 40;
+
+var BB = group3.add("button", undefined, undefined, {name: "BB"});
+BB.text = "\u2193"; // ↓
+BB.preferredSize.width = 40;
+BB.preferredSize.height = 40;
+
+var RB = group3.add("button", undefined, undefined, {name: "RB"});
+RB.text = "\u2198"; // ↘
+RB.preferredSize.width = 40;
+RB.preferredSize.height = 40;
+
+// ADD NULL BUTTON
+// ===============
+var button1 = win.add("button", undefined, undefined, {name: "button1"});
+button1.text = "Add Null";
+
+// LAYOUT
+// ======
+try {
+    win.layout.layout(true);
+    win.layout.resize();
+} catch(e) { /* layout not supported the same way in this host - ignore */ }
+win.onResizing = win.onResize = function () { try { this.layout.resize(); } catch(e){} };
+
+if (win instanceof Window) win.show();
 
 // ---------------------------------------------------------------------------
 // Host-safe helpers.
-// Some ScriptUI hosts (e.g. EffectsCraft) do not build every UI element the
-// same way After Effects does. Directly assigning properties like helpTip or
-// onClick on an element that is missing/null throws:
-//   "cannot convert null or undefined to object"
-// So ALL UI property assignments below go through these guarded helpers.
+// Some ScriptUI hosts (e.g. EffectsCraft) do not support every ScriptUI
+// property (like helpTip). Assigning on a missing element can throw
+// "cannot convert null or undefined to object", so all assignments below
+// go through these guarded helpers.
 // ---------------------------------------------------------------------------
 function setHelpTip(element, tip){
     try {
@@ -60,81 +139,18 @@ function bindEvent(element, event, handler){
     } catch(e){ /* not supported by this host - ignore */ }
 }
 
-function createUserInterface(thisObj, userInterfaceString, scriptName){
-
-    var pal = (thisObj instanceof Panel) ? thisObj : new Window("palette", scriptName, undefined, {resizeable: true});
-    if (pal == null) return pal;
-
-    // Panel itself: children fill the whole area (the centered "container"
-    // group inside takes care of putting everything in the middle).
-    try {
-        pal.orientation = "column";
-        pal.alignChildren = ["fill", "fill"];
-        pal.margins = 4;
-        pal.spacing = 0;
-    } catch(e){ /* host may not allow these - ignore */ }
-
-    var UI = pal.add(userInterfaceString);
-
-    try {
-        pal.layout.layout(true);
-        pal.layout.resize();
-    } catch(e){ /* layout not supported the same way in this host - ignore */ }
-    bindEvent(pal, "onResizing", function(){
-        try { this.layout.resize(); } catch(e){}
-    });
-    bindEvent(pal, "onResize", function(){
-        try { this.layout.resize(); } catch(e){}
-    });
-    if ((pal != null) && (pal instanceof Window)){
-        pal.show();
-    }
-
-    var container = UI.container; // stack group holding the 3 rows + Add Null button
-
-    // The 3x3 grid is made of plain (unlabeled) Buttons. ScriptUI buttons have
-    // no persistent "checked" state, so the selected cell is tracked in a
-    // variable: clicking a cell makes it THE active cell and applies the
-    // anchor point right away. Multi-select is impossible by design.
-    var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
-
-    // NOTE: this host does NOT provide a global `window` object (that caused
-    // "ReferenceError: window is not defined"). Selected-cell state lives in
-    // plain script-scoped variables shared via the globals below.
-    selectedAnchorRow = 2;
-    selectedAnchorCol = 1;
-
-    setHelpTip(container, "Click a position to instantly move the anchor point there");
-    for(var r = 1; r <= 3; r++){
-        (function(rowIdx){
-            var row = container['row' + rowIdx];
-            if(!row) return;
-            for(var c = 0; c < row.children.length; c++){
-                (function(colIdx){
-                    var label = tooltipGrid[(rowIdx - 1) * 3 + colIdx];
-                    setHelpTip(row.children[colIdx], "Move anchor point to " + label + " of the layer (applies instantly)");
-                    bindEvent(row.children[colIdx], "onClick", function() {
-                        selectedAnchorRow = rowIdx;
-                        selectedAnchorCol = colIdx;
-                        applyAnchorPoint();
-                    });
-                })(c);
-            }
-        })(r);
-    }
-
-    setHelpTip(container.addNullBtn, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
-
-    return UI;
-}
-
-var UI = createUserInterface(this, resourceString, "Binzii Anchor Point");
-
-// If the panel could not be created (or the host failed to build it), stop here
-// with a clear message instead of crashing later on undefined/null references.
-if(!UI){
-    alert("Binzii_AnchorPoint: could not create the panel UI in this host.");
-}
+// Tooltips for every control
+setHelpTip(panel1, "Click an arrow to instantly move the anchor point there");
+setHelpTip(LT, "Move anchor point to Top Left of the layer (applies instantly)");
+setHelpTip(CT, "Move anchor point to Top Center of the layer (applies instantly)");
+setHelpTip(RT, "Move anchor point to Top Right of the layer (applies instantly)");
+setHelpTip(LL, "Move anchor point to Center Left of the layer (applies instantly)");
+setHelpTip(CC, "Move anchor point to Center of the layer (applies instantly)");
+setHelpTip(RR, "Move anchor point to Center Right of the layer (applies instantly)");
+setHelpTip(LB, "Move anchor point to Bottom Left of the layer (applies instantly)");
+setHelpTip(BB, "Move anchor point to Bottom Center of the layer (applies instantly)");
+setHelpTip(RB, "Move anchor point to Bottom Right of the layer (applies instantly)");
+setHelpTip(button1, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
 
 // Reset rotation
 function setPropertyValue(comp, property, value){
@@ -179,7 +195,7 @@ function getBoundingBox(layer) {
                 top = Math.min(top, vy, inY, outY);
                 bottom = Math.max(bottom, vy, inY, outY);
             }
-            
+
             boundingBox.width = right - left;
             boundingBox.height = bottom - top;
             boundingBox.left = left;
@@ -211,18 +227,14 @@ function validateSelection(){
     return { comp: comp, layers: layers };
 }
 
-// Which grid cell is currently active (tracked when a button is clicked).
-// Declared WITHOUT `var` on purpose: the UI builder assigns to these too, and
-// this host has no `window` object, so they must be plain script globals.
-// Defaults to Center so the very first click always has a valid state.
-selectedAnchorRow = 2;
-selectedAnchorCol = 1;
-
-// Move the anchor point to the selected grid position. Each click computes
+// Move the anchor point to the chosen grid position. Each click computes
 // the target from the CURRENT bounding box, so switching positions never
 // stacks deltas - the layer always ends up visually in place with the anchor
 // at the chosen corner/edge/center.
-function applyAnchorPoint(){
+// fx/fy are fractional coordinates within the bounding box:
+//   x: 0 = left edge, 0.5 = center, 1 = right edge
+//   y: 0 = top edge,  0.5 = center, 1 = bottom edge
+function applyAnchorPoint(fx, fy){
     var selection = validateSelection();
     if(selection == null) return;
     var comp = selection.comp;
@@ -232,7 +244,6 @@ function applyAnchorPoint(){
 
     for(var l = 0; l < layers.length; l++){
         var currentLayer = layers[l];
-        var currentTime = comp.time;
         var positionProp = currentLayer.property("ADBE Transform Group").property("ADBE Position");
         var anchorPointProp = currentLayer.property("ADBE Transform Group").property("ADBE Anchor Point");
 
@@ -243,24 +254,14 @@ function applyAnchorPoint(){
         var width = sourceRect.width;
         var height = sourceRect.height;
 
+        // Target point in layer space
+        var tx = left + width * fx;
+        var ty = top + height * fy;
+
         // Check if layer has any expression in the Anchor Point
         if(anchorPointProp.expressionEnabled){
             anchorPointProp.expression = "";
         }
-
-        // Grid selection: which cell is active (tracked on click). Compute the
-        // target corner/edge/center of the bounding box in LAYER space.
-        var selRow = selectedAnchorRow || 2;
-        var selCol = (selectedAnchorCol === undefined) ? 1 : selectedAnchorCol;
-
-        var fx, fy; // fractional position within the bounding box
-        if(selCol === 0)      fx = left;
-        else if(selCol === 1) fx = left + width / 2;
-        else                  fx = left + width;
-
-        if(selRow === 1)      fy = top;
-        else if(selRow === 2) fy = top + height / 2;
-        else                  fy = top + height;
 
         var newAnchorValue;
         if(currentLayer.threeDLayer){
@@ -271,7 +272,7 @@ function applyAnchorPoint(){
             // its rotated axes. Fix: do the correction in WORLD space instead.
             //   1. remember where the OLD anchor sits in world space,
             //   2. set the new anchor,
-            //   3. with the new anchor, the chosen point (fx, fy) IS rendered
+            //   3. with the new anchor, the chosen point (tx, ty) IS rendered
             //      at the layer's Position - find where that lands in world
             //      space via toWorld(),
             //   4. shift Position by the world-space correction vector so the
@@ -279,11 +280,11 @@ function applyAnchorPoint(){
             // Result: the layer never jumps visually, even when rotated.
             var oldAnchorWorld = currentLayer.toWorld(anchorPointProp.value);
 
-            var newA3D = [fx, fy];
+            var newA3D = [tx, ty];
             if(anchorPointProp.value.length > 2){ newA3D.push(anchorPointProp.value[2]); }
             setPropertyValue(comp, anchorPointProp, newA3D);
 
-            var targetWorld = currentLayer.toWorld([fx, fy]);
+            var targetWorld = currentLayer.toWorld([tx, ty]);
             var curPos = positionProp.value;
             var corrected = [];
             for(var d3 = 0; d3 < curPos.length; d3++){
@@ -293,14 +294,14 @@ function applyAnchorPoint(){
             setPropertyValue(comp, positionProp, corrected);
             continue; // 3D path fully handles this layer (undo group still open)
         } else {
-            newAnchorValue = [fx, fy];
+            newAnchorValue = [tx, ty];
         }
 
         // ---- 2D layers ----
         // Keep the layer visually in place: when the anchor moves by delta,
         // the position must move by the same delta (in layer space).
-        var initialPositionValue2D = currentLayer.property("ADBE Transform Group").property("ADBE Position").value;
-        var initialAnchorValue2D = currentLayer.property("ADBE Transform Group").property("ADBE Anchor Point").value;
+        var initialPositionValue2D = positionProp.value;
+        var initialAnchorValue2D = anchorPointProp.value;
         var dims = Math.max(newAnchorValue.length, initialAnchorValue2D.length, initialPositionValue2D.length);
         var newPositionValue = [];
         for(var d = 0; d < dims; d++){
@@ -359,8 +360,21 @@ function addNullToLayers(){
     app.endUndoGroup();
 }
 
+// Wire the instant-apply handlers: clicking an arrow immediately moves the
+// anchor point to that position (buttons have no persistent state, so there
+// is nothing to multi-select - each click just applies its own position).
+bindEvent(LT, "onClick", function(){ applyAnchorPoint(0,   0);   });
+bindEvent(CT, "onClick", function(){ applyAnchorPoint(0.5, 0);   });
+bindEvent(RT, "onClick", function(){ applyAnchorPoint(1,   0);   });
+bindEvent(LL, "onClick", function(){ applyAnchorPoint(0,   0.5); });
+bindEvent(CC, "onClick", function(){ applyAnchorPoint(0.5, 0.5); });
+bindEvent(RR, "onClick", function(){ applyAnchorPoint(1,   0.5); });
+bindEvent(LB, "onClick", function(){ applyAnchorPoint(0,   1);   });
+bindEvent(BB, "onClick", function(){ applyAnchorPoint(0.5, 1);   });
+bindEvent(RB, "onClick", function(){ applyAnchorPoint(1,   1);   });
+
 // "Add Null" button: creates a null AT the anchor point position and parents
 // the selected layer(s) to it in one click.
-bindEvent(UI.container.addNullBtn, "onClick", function(){
+bindEvent(button1, "onClick", function(){
     addNullToLayers();
 });
