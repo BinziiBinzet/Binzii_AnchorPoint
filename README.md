@@ -41,7 +41,7 @@ All original credit for the script and its concept goes to the upstream author. 
 - Auto Apply (checkbox, next to the Apply button): automatically re-applies the **anchor point** only (radio grid + offset fields) whenever those controls change while it is activated. The *Add Null* and *Add Parent to Null* buttons are manual actions and are **not** affected by Auto Apply.
 - Tooltips: every control in the panel has a tooltip explaining what it does
 
-> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression* and *Rotate Null* options, converts *Add Null* / *Add Parent to Null* into standalone action buttons (the latter creates a null and parents the layer in one click), adds an *Auto Apply* checkbox limited to the anchor point controls, and adds tooltips for all UI elements.
+> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression* and *Rotate Null* options, converts *Add Null* / *Add Parent to Null* into standalone action buttons (the latter creates a null and parents the layer in one click), adds an *Auto Apply* checkbox limited to the anchor point controls, removes the "Auto apply anchor point when activated" hint text, and adds tooltips for all UI elements.
 
 ## Examples
 Work in progress.

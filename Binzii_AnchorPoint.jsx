@@ -44,8 +44,7 @@ var resourceString =
     bottomRow: Group{orientation: 'row', alignment: ['fill', 'bottom'], alignChildren: ['center', 'center'],\
         autoApply: Checkbox{text: 'Auto Apply'},\
         applyButton: Button{text: 'Apply'}\
-    },\
-    autoApplyHint: StaticText{text: 'Auto apply anchor point when activated', alignment: ['center', 'top']}\
+    }\
 }"
 
 // ---------------------------------------------------------------------------
@@ -158,8 +157,7 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     setHelpTip(nullGroup.addNullBtn, "Create a null object at the new anchor point position of the selected layer(s)");
     setHelpTip(nullGroup.addParentToNullBtn, "Create a new null object AND parent the selected layer(s) to it in one click");
     setHelpTip(UI.bottomRow ? UI.bottomRow.autoApply : null, "Automatically apply the anchor point change whenever an anchor point option or offset value changes");
-    setHelpTip(UI.applyButton, "Apply the anchor point change to the selected layer(s)");
-    setHelpTip(UI.autoApplyHint, "Auto Apply only affects the anchor point (radio buttons and offset fields), not the null buttons");
+    setHelpTip(UI.bottomRow ? UI.bottomRow.applyButton : null, "Apply the anchor point change to the selected layer(s)");
 
     // Default state for the radio selection
     anchorPointGroup.row2.b.value = true;
@@ -298,8 +296,6 @@ function applyAnchorPoint(doUndo){
         var initialPositionValue = positionProp.value;
         var initialAnchorValue = anchorPointProp.value;
 
-        var positionTag, newAnchorPositionId;
-
         // Bounding box
         var sourceRect = getBoundingBox(currentLayer);
         var top = sourceRect.top;
@@ -320,78 +316,47 @@ function applyAnchorPoint(doUndo){
         if(isNaN(offsetY)) offsetY = 0;
         if(isNaN(offsetZ)) offsetZ = 0;
 
-        // Radio button selection
-        // Row 1
+        // Radio button selection - compute the target point directly in the
+        // layer's own coordinate system (same math as the original upstream
+        // script). This does NOT rely on toWorld()/fromWorld() expressions,
+        // which are unsupported/unreliable in EffectsCraft and made the
+        // anchor point move silently fail.
+        var newAnchorValue;
         if (UI.anchorPointGroup.row1.a.value){
-            positionTag = "Top Left";
-            newAnchorPositionId = 0;
+            newAnchorValue = [left + offsetX, top + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row1.b.value){
-            positionTag = "Top Center";
-            newAnchorPositionId = 1;
+            newAnchorValue = [(left + width / 2) + offsetX, top + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row1.c.value){
-            positionTag = "Top Right";
-            newAnchorPositionId = 2;
-        // Row 2
+            newAnchorValue = [(left + width) + offsetX, top + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row2.a.value){
-            positionTag = "Center Left";
-            newAnchorPositionId = 3;
+            newAnchorValue = [left + offsetX, (top + height / 2) + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row2.b.value){
-            positionTag = "Center";
-            newAnchorPositionId = 4;
+            newAnchorValue = [(left + width / 2) + offsetX, (top + height / 2) + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row2.c.value){
-            positionTag = "Center Right";
-            newAnchorPositionId = 5;
-        // Row 3
+            newAnchorValue = [(left + width) + offsetX, (top + height / 2) + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row3.a.value){
-            positionTag = "Bottom Left";
-            newAnchorPositionId = 6;
+            newAnchorValue = [left + offsetX, (top + height) + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row3.b.value){
-            positionTag = "Bottom Center";
-            newAnchorPositionId = 7;
+            newAnchorValue = [(left + width / 2) + offsetX, (top + height) + offsetY, offsetZ];
         } else if (UI.anchorPointGroup.row3.c.value){
-            positionTag = "Bottom Right";
-            newAnchorPositionId = 8;
+            newAnchorValue = [(left + width) + offsetX, (top + height) + offsetY, offsetZ];
         } else {
-            positionTag = "Center";
-            newAnchorPositionId = 4;
+            newAnchorValue = [(left + width / 2) + offsetX, (top + height / 2) + offsetY, offsetZ];
         }
 
-        // Position + Anchor Point workaround - Charles Bordenave's solution is the best I found.
-        var anchorGridX = (newAnchorPositionId % 3) - 1;
-		var anchorGridY = Math.floor(newAnchorPositionId / 3) - 1;
-        var centerWidth = width / 2;
-		var centerHeight = height / 2;
+        // Keep the layer visually in place: when the anchor moves by delta,
+        // the position must move by the same delta (in layer space).
+        var positionDelta = [
+            newAnchorValue[0] - initialAnchorValue[0],
+            newAnchorValue[1] - initialAnchorValue[1],
+            newAnchorValue[2] - initialAnchorValue[2]
+        ];
+        var newPositionValue = [
+            initialPositionValue[0] + positionDelta[0],
+            initialPositionValue[1] + positionDelta[1],
+            initialPositionValue[2] + positionDelta[2]
+        ];
 
-        /*
-        Anchor Point expression: 
-            fromWorld(toWorld([centerWidth, centerHeight, 0] + [(anchorGridX * centerWidth + left + offsetX), (anchorGridY * centerHeight + top + offsetY), offsetZ]));
-        */
-        anchorPointProp.expression = 
-        "fromWorld(toWorld([" + centerWidth + ", " + centerHeight + ", 0] + [(" + anchorGridX + " * " + centerWidth + " + " + left + " + " + offsetX + "), (" + anchorGridY + " * "+ centerHeight + " + " + top + " + " + offsetY + "), " + offsetZ + "]));";
-        
-        /*
-        Position Expression:
-            try {
-                parent.fromWorld(toWorld([centerWidth, centerHeight, 0] + [(anchorGridX * centerWidth + left + offsetX), (anchorGridY * centerHeight + top + offsetY), offsetZ]));
-            }
-            catch(e){
-                toWorld([centerWidth, centerHeight, 0] + [(anchorGridX * centerWidth + left + offsetX), (anchorGridY * centerHeight + top + offsetY), offsetZ]);
-            }
-        */
-        positionProp.expression =
-        "try {\r" +
-        "\tparent.fromWorld(toWorld([" + centerWidth + ", " + centerHeight + ", 0] + [(" + anchorGridX + " * " + centerWidth + " + " + left + " + " + offsetX + "), (" + anchorGridY + " * "+ centerHeight + " + " + top + " + " + offsetY + "), " + offsetZ + "]));\r" +
-        "}\r" +
-        "catch(e){\r" +
-        "\ttoWorld([" + centerWidth + ", " + centerHeight + ", 0] + [(" + anchorGridX + " * " + centerWidth + " + " + left + " + " + offsetX + "), (" + anchorGridY + " * " + centerHeight + " + " + top + " + " + offsetY + "), " + offsetZ + "]);\r" +
-        "}";
-
-		positionProp.expressionEnabled = false;
-		positionProp.expressionEnabled = true;
-        var newAnchorValue = anchorPointProp.valueAtTime(currentTime, false);
-		anchorPointProp.expression = "";
-		var newPositionValue = positionProp.valueAtTime(currentTime, false);
-		positionProp.expression = "";
         setPropertyValue(comp, positionProp, newPositionValue);
         setPropertyValue(comp, anchorPointProp, newAnchorValue);
 
@@ -445,7 +410,7 @@ function addNullToLayers(autoParent){
 }
 
 // Apply button: runs the anchor point move
-bindEvent(UI.applyButton, "onClick", function(){
+bindEvent(UI.bottomRow ? UI.bottomRow.applyButton : null, "onClick", function(){
     applyAnchorPoint(true);
 });
 
