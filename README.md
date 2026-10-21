@@ -1,18 +1,27 @@
+# Manipulate Anchor Point
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M212BC7C)
 
-
-EffectCraft     ScriptUI that moves the anchor point of a layer, with options to create a null parent and offset it.
-
-## About This Fork
-
-This repository is a fork of [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point), originally created by **[Eveline Falcão](https://github.com/evefalcao)**. All credit for the original script and its concept goes to her. This fork exists to keep 
+ScriptUI that moves the anchor point of a layer, with options to create a null and/or add anchor point expression and offset it.
 
 ## Table of Contents
 
+- [About This Fork](#about-this-fork)
 - [Installation](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#installation)
 - [Options](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#options)
 - [Examples](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#examples)
 - [Contributing](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#contributing)
 - [License](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#license)
+
+## About This Fork
+
+This repository is a **fork** of [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point), originally created by **[Eveline Falcão (@evefalcao)](https://github.com/evefalcao)**.
+
+All original credit for the script and its concept goes to the upstream author. This fork exists so I can keep my own copy and apply personal modifications to it. If you like the original work, please consider supporting the author via their [Ko-fi page](https://ko-fi.com/M4M212BC7C).
+
+- **Upstream repository:** https://github.com/evefalcao/EF_Manipulate-Anchor-Point
+- **Original author:** Eveline Falcão ([@evefalcao](https://github.com/evefalcao))
+- **Forked by:** [@BinziiBinzet](https://github.com/BinziiBinzet)
+- **License:** CC BY-SA 4.0 (same as upstream — attribution and share-alike terms apply)
 
 ## Installation
 1. Download the [latest release](https://github.com/evefalcao/EF_Manipulate-Anchor-Point/archive/refs/heads/main.zip) of the script.
@@ -26,7 +35,10 @@ This repository is a fork of [EF_Manipulate-Anchor-Point](https://github.com/eve
 - Offset Point: offset to the anchor point from the selected layer position
 - Add Null: add null to anchor point
 - Parent to Null: parent layer to null
+- Add Expression: add expression to pin the anchor to the selected point
 
+## Examples
+Work in progress.
 
 ## Contributing
 Contributions are welcome! If you have any ideas for improvement, bug fixes, or new features, please open an issue or submit a pull request.
