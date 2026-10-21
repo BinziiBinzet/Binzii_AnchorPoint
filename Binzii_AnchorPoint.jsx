@@ -38,7 +38,7 @@ var resourceString =
     extraActionGroup: Group{orientation: 'row', alignment: ['fill', 'fill'], alignChildren: ['center', 'top'],\
         nullGroup: Group{orientation: 'column', alignChildren: ['left', 'top'],\
             addNullBtn: Button{text: 'Add Null'},\
-            parentToNullBtn: Button{text: 'Parent to Null'},\
+            addParentToNullBtn: Button{text: 'Add Parent to Null'},\
         },\
     },\
     bottomRow: Group{orientation: 'row', alignment: ['fill', 'bottom'], alignChildren: ['center', 'center'],\
@@ -131,7 +131,7 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     offsetAnchorPoint.yText.helpTip = "Vertical offset (Y) in pixels";
     offsetAnchorPoint.zText.helpTip = "Depth offset (Z) in pixels (for 3D layers)";
     nullGroup.addNullBtn.helpTip = "Create a null object at the new anchor point position of the selected layer(s)";
-    nullGroup.parentToNullBtn.helpTip = "Parent the selected layer(s) to the created null. Click 'Add Null' first";
+    nullGroup.addParentToNullBtn.helpTip = "Create a new null object AND parent the selected layer(s) to it in one click";
     UI.bottomRow.autoApply.helpTip = "Automatically apply the anchor point change whenever an anchor point option or offset value changes";
     UI.applyButton.helpTip = "Apply the anchor point change to the selected layer(s)";
     UI.autoApplyHint.helpTip = "Auto Apply only affects the anchor point (radio buttons and offset fields), not the null buttons";
@@ -376,7 +376,7 @@ function applyAnchorPoint(doUndo){
 }
 
 // Create a null object at the new anchor point position of the selected layer(s)
-function addNullToLayers(){
+function addNullToLayers(autoParent){
     var selection = validateSelection();
     if(selection == null) return;
     var comp = selection.comp;
@@ -400,39 +400,15 @@ function addNullToLayers(){
         var nullPositionProp = nullCtrlProps.property("ADBE Position");
         setPropertyValue(comp, nullPositionProp, newPositionValue);
 
+        // "Add Parent to Null": parent the layer to the newly created null.
+        // Because the null shares the layer's world position AND inherits its
+        // parent, parenting keeps the layer visually in place (no jump).
+        if(autoParent){
+            currentLayer.parent = nullCtrl;
+        }
+
         currentLayer.selected = true;
         nullCtrl.selected = false;
-    }
-    app.endUndoGroup();
-}
-
-// Parent the selected layer(s) to the most recently created null
-function parentLayersToNull(){
-    var selection = validateSelection();
-    if(selection == null) return;
-    var comp = selection.comp;
-    var layers = selection.layers;
-
-    // Find the last created null (by name prefix set in addNullToLayers)
-    var lastNull = null;
-    for(var i = comp.layers.length; i >= 1; i--){
-        var lyr = comp.layer(i);
-        if(lyr instanceof AVLayer && lyr.source != null && lyr.source.name === "Null"){
-            if(lyr.name.indexOf("Null - ") === 0){
-                lastNull = lyr;
-                break;
-            }
-        }
-    }
-
-    if(lastNull == null){
-        alert("No null created by this script was found.\nClick 'Add Null' first.");
-        return;
-    }
-
-    app.beginUndoGroup("Parent Layers to Null");
-    for(var l = 0; l < layers.length; l++){
-        layers[l].parent = lastNull;
     }
     app.endUndoGroup();
 }
@@ -443,11 +419,13 @@ UI.applyButton.onClick = function(){
 }
 
 // Null buttons: independent actions, NOT affected by Auto Apply
+// "Add Null" -> creates a null only (no parenting)
+// "Add Parent to Null" -> creates a null AND parents the layer(s) to it
 UI.extraActionGroup.nullGroup.addNullBtn.onClick = function(){
-    addNullToLayers();
+    addNullToLayers(false);
 }
-UI.extraActionGroup.nullGroup.parentToNullBtn.onClick = function(){
-    parentLayersToNull();
+UI.extraActionGroup.nullGroup.addParentToNullBtn.onClick = function(){
+    addNullToLayers(true);
 }
 
 // Auto Apply: re-applies the ANCHOR POINT only (radio buttons + offset fields)
