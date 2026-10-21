@@ -48,6 +48,26 @@ var resourceString =
     autoApplyHint: StaticText{text: 'Auto apply anchor point when activated', alignment: ['center', 'top']}\
 }"
 
+// ---------------------------------------------------------------------------
+// Host-safe helpers.
+// Some ScriptUI hosts (e.g. EffectsCraft) do not build every UI element the
+// same way After Effects does. Directly assigning properties like helpTip or
+// onClick on an element that is missing/null throws:
+//   "cannot convert null or undefined to object"
+// So ALL UI property assignments below go through these guarded helpers.
+// ---------------------------------------------------------------------------
+function setHelpTip(element, tip){
+    try {
+        if(element){ element.helpTip = tip; }
+    } catch(e){ /* host does not support helpTip - ignore */ }
+}
+
+function bindEvent(element, event, handler){
+    try {
+        if(element){ element[event] = handler; }
+    } catch(e){ /* not supported by this host - ignore */ }
+}
+
 function createUserInterface(thisObj, userInterfaceString, scriptName){
 
     var pal = (thisObj instanceof Panel) ? thisObj : new Window("palette", scriptName, undefined, {resizeable: true});
@@ -55,11 +75,16 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
 
     var UI = pal.add(userInterfaceString);
 
-    pal.layout.layout(true);
-    pal.layout.resize();
-    pal.onResizing = pal.onResize = function(){
-        this.layout.resize();
-    }
+    try {
+        pal.layout.layout(true);
+        pal.layout.resize();
+    } catch(e){ /* layout not supported the same way in this host - ignore */ }
+    bindEvent(pal, "onResizing", function(){
+        try { this.layout.resize(); } catch(e){}
+    });
+    bindEvent(pal, "onResize", function(){
+        try { this.layout.resize(); } catch(e){}
+    });
     if ((pal != null) && (pal instanceof Window)){
         pal.show();
     }
@@ -71,62 +96,51 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     // Check the radio button states
     // Row 1
     for(var c = 0; c < anchorPointGroup.row1.children.length; c++){
-        anchorPointGroup.row1.children[c].onClick = function() {
+        bindEvent(anchorPointGroup.row1.children[c], "onClick", function() {
             for (var i = 0; i < anchorPointGroup.row1.children.length; i++) {
                 anchorPointGroup.row2.children[i].value = false;
                 anchorPointGroup.row3.children[i].value = false;
             }
-        };
+        });
     }
     // Row 2
     for(var c = 0; c < anchorPointGroup.row2.children.length; c++){
-        anchorPointGroup.row2.children[c].onClick = function() {
+        bindEvent(anchorPointGroup.row2.children[c], "onClick", function() {
             for (var i = 0; i < anchorPointGroup.row2.children.length; i++) {
                 anchorPointGroup.row1.children[i].value = false;
                 anchorPointGroup.row3.children[i].value = false;
             }
-        };
+        });
     }
     // Row 3
     for(var c = 0; c < anchorPointGroup.row3.children.length; c++){
-        anchorPointGroup.row3.children[c].onClick = function() {
+        bindEvent(anchorPointGroup.row3.children[c], "onClick", function() {
             for (var i = 0; i < anchorPointGroup.row3.children.length; i++) {
                 anchorPointGroup.row1.children[i].value = false;
                 anchorPointGroup.row2.children[i].value = false;
             }
-        };
+        });
     }
 
     // Default state for the offset value
-    offsetAnchorPoint.xText.onChange = function(){
+    bindEvent(offsetAnchorPoint.xText, "onChange", function(){
         var xVal = parseFloat(offsetAnchorPoint.xText.text);
         if(isNaN(xVal)){
             offsetAnchorPoint.xText.text = 0;
         }
-    }
-    offsetAnchorPoint.yText.onChange = function(){
+    });
+    bindEvent(offsetAnchorPoint.yText, "onChange", function(){
         var yVal = parseFloat(offsetAnchorPoint.yText.text);
         if(isNaN(yVal)){
             offsetAnchorPoint.yText.text = 0;
         }
-    }
-    offsetAnchorPoint.zText.onChange = function(){
+    });
+    bindEvent(offsetAnchorPoint.zText, "onChange", function(){
         var zVal = parseFloat(offsetAnchorPoint.zText.text);
         if(isNaN(zVal)){
             offsetAnchorPoint.zText.text = 0;
         }
-    }
-
-    // Tooltips for every control.
-    // NOTE: helpTip is NOT supported in some hosts (e.g. EffectsCraft); assigning
-    // it to an element that doesn't exist throws "cannot convert null or undefined
-    // to object". Every assignment below is therefore wrapped in try/catch so the
-    // panel always builds successfully regardless of host support.
-    function setHelpTip(element, tip){
-        try {
-            if(element){ element.helpTip = tip; }
-        } catch(e){ /* host does not support helpTip - ignore */ }
-    }
+    });
 
     var tooltipGrid = ["Top Left", "Top Center", "Top Right", "Center Left", "Center", "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"];
     setHelpTip(anchorPointGroup, "Choose where to move the anchor point");
@@ -153,7 +167,13 @@ function createUserInterface(thisObj, userInterfaceString, scriptName){
     return UI;
 }
 
-var UI = createUserInterface(this, resourceString, "EF_Manipulate Anchor Point");
+var UI = createUserInterface(this, resourceString, "Binzii Anchor Point");
+
+// If the panel could not be created (or the host failed to build it), stop here
+// with a clear message instead of crashing later on undefined/null references.
+if(!UI){
+    alert("Binzii_AnchorPoint: could not create the panel UI in this host.");
+}
 
 // Reset rotation
 function setPropertyValue(comp, property, value){
@@ -425,17 +445,9 @@ function addNullToLayers(autoParent){
 }
 
 // Apply button: runs the anchor point move
-UI.applyButton.onClick = function(){
+bindEvent(UI.applyButton, "onClick", function(){
     applyAnchorPoint(true);
-}
-
-// Safe event binding: some hosts (e.g. EffectsCraft) may not support assigning
-// onClick/onChange on certain elements - wrap in try/catch so the panel still loads.
-function bindEvent(element, event, handler){
-    try {
-        if(element){ element[event] = handler; }
-    } catch(e){ /* not supported by this host - ignore */ }
-}
+});
 
 // Null buttons: independent actions, NOT affected by Auto Apply
 // "Add Null" -> creates a null only (no parenting)
