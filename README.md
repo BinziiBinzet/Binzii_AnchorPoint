@@ -1,5 +1,4 @@
 # Binzii Anchor Point
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M212BC7C)
 
 A **ScriptUI panel for EffectCraft** that moves a layer's anchor point via a 3x3 grid — with full **2D & 3D rotation-safe math** (powered by [PivotCraft](#acknowledgments--thanks) logic) — plus a one-click **Add Null** button that creates a null at the selected layer(s)' anchor position and parents them to it automatically.
 
@@ -47,8 +46,9 @@ All original credit for the script and its concept goes to the upstream author. 
 - **PivotCraft** (EffectCraft contributors, MIT License) — huge thanks! The entire anchor-point engine of this fork (layer bounds detection via `sourceRectAtTime`, 2D rotation/scale matrix compensation, and the full 3D orientation/rotation matrix math with keyframe-aware position correction) is taken directly from PivotCraft.
 - Charles Bordenave ([nabscripts.com](https://www.nabscripts.com)) for *Reposition Anchor Point*, and Zack Lovatt ([lova.tt](https://lova.tt/)) for *zl_CreatePivotalNull*, which inspired the original upstream script.
 
-## Examples
-Work in progress.
+## Looks
+<img width="209" height="319" alt="{F76E37FB-CFF0-47FA-96AF-363F793BA6D8}" src="https://github.com/user-attachments/assets/a147230a-e3e2-4503-ae80-e610e996ae4a" />
+
 
 ## Contributing
 Contributions are welcome! If you have any ideas for improvement, bug fixes, or new features, please open an issue or submit a pull request.
