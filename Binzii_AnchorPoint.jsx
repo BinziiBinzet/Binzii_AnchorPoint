@@ -146,15 +146,6 @@ function safeCall(fn){
 
 // Tooltips for every control
 setHelpTip(panel1, "Click an arrow to instantly move the anchor point there");
-setHelpTip(LT, "Move anchor point to Top Left of the layer (applies instantly)");
-setHelpTip(CT, "Move anchor point to Top Center of the layer (applies instantly)");
-setHelpTip(RT, "Move anchor point to Top Right of the layer (applies instantly)");
-setHelpTip(LL, "Move anchor point to Center Left of the layer (applies instantly)");
-setHelpTip(CC, "Move anchor point to Center of the layer (applies instantly)");
-setHelpTip(RR, "Move anchor point to Center Right of the layer (applies instantly)");
-setHelpTip(LB, "Move anchor point to Bottom Left of the layer (applies instantly)");
-setHelpTip(BB, "Move anchor point to Bottom Center of the layer (applies instantly)");
-setHelpTip(RB, "Move anchor point to Bottom Right of the layer (applies instantly)");
 setHelpTip(button1, "Create a null object at the anchor point position of the selected layer(s) and automatically parent the layer(s) to it");
 
 // Reset rotation
