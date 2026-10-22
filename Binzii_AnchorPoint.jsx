@@ -5,7 +5,7 @@
  * @version           1.0.0
  * @createdFor        EffectCraft
  * @description       Move Anchor Point to selected layer point. Can add and parent a null to the selected layer point.
- * @thankyou          Charles Bordenave (https://www.nabscripts.com) for RepositionAnchorPoint (version: 3.9) and Zack Lovatt (https://lova.tt/) for zl_CreatePivotalNull (version: 1.1) and Eveline Falcão.
+ * @thankyou          Charles Bordenave (https://www.nabscripts.com) for RepositionAnchorPoint (version: 3.9) and Zack Lovatt (https://lova.tt/) for zl_CreatePivotalNull (version: 1.1) and Eveline Falcão. Special thanks to PivotCraft (EffectCraft contributors, MIT License) — the anchor-point math (2D + 3D bounds & transform compensation) is taken from it.
  *========================================================================**/
 
 var panelGlobal = this;
@@ -183,9 +183,10 @@ function validateSelection(){
 }
 
 // ---------------------------------------------------------------------------
-// Anchor-point math, taken from the PivotCraft script (EffectCraft contributors,
-// MIT License): sourceRectAtTime bounds + scale/rotation matrix compensation so
-// the layer never jumps visually when the pivot moves. 2D only, as requested.
+// Anchor-point math, taken FULLY from the PivotCraft script (EffectCraft
+// contributors, MIT License): sourceRectAtTime bounds + scale/rotation matrix
+// compensation (2D and 3D) so the layer never jumps visually when the pivot
+// moves. All keyframes are shifted too, including separated dimensions and Z.
 // ---------------------------------------------------------------------------
 
 // Bounding box of a layer (also considers layers with masks)
@@ -226,69 +227,175 @@ function getLayerBounds(layer) {
     return { left: left, top: top, width: width, height: height };
 }
 
-// 2D rotation & scale matrix shift (PivotCraft computeShift2D)
+// 2D Rotation & Scale Matrix Shift (PivotCraft computeShift2D)
 function computeShift2D(deltaA, scale, rotationDeg) {
     var rad = rotationDeg * Math.PI / 180.0;
     var cs = Math.cos(rad);
     var sn = Math.sin(rad);
     var dx = deltaA[0] * (scale[0] / 100.0);
     var dy = deltaA[1] * (scale[1] / 100.0);
-    return [dx * cs - dy * sn, dx * sn + dy * cs];
+    return [
+      dx * cs - dy * sn,
+      dx * sn + dy * cs,
+      0
+    ];
 }
 
-// Apply the pivot to one layer using the PivotCraft math (2D path only).
+// 3D Matrix Multiplication & Transformation Shift (PivotCraft computeShift3D)
+function computeShift3D(deltaA, scale, orient, rot) {
+    var rad = Math.PI / 180.0;
+    // Orientation angles: Z, Y, X
+    // Rotations: rx, ry, rz
+    var ox = orient[0] * rad, oy = orient[1] * rad, oz = orient[2] * rad;
+    var rx = rot[0] * rad, ry = rot[1] * rad, rz = rot[2] * rad;
+
+    // Helper to multiply 3x3 matrices
+    function m3Mul(a, b) {
+      var r = [[0,0,0],[0,0,0],[0,0,0]];
+      for (var i = 0; i < 3; i++) {
+        for (var j = 0; j < 3; j++) {
+          r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+        }
+      }
+      return r;
+    }
+
+    function rotX(a) {
+      var c = Math.cos(a), s = Math.sin(a);
+      return [[1, 0, 0], [0, c, -s], [0, s, c]];
+    }
+    function rotY(a) {
+      var c = Math.cos(a), s = Math.sin(a);
+      return [[c, 0, s], [0, 1, 0], [-s, 0, c]];
+    }
+    function rotZ(a) {
+      var c = Math.cos(a), s = Math.sin(a);
+      return [[c, -s, 0], [s, c, 0], [0, 0, 1]];
+    }
+
+    var mOrient = m3Mul(rotZ(oz), m3Mul(rotY(oy), rotX(ox)));
+    var mRot = m3Mul(rotZ(rz), m3Mul(rotY(ry), rotX(rx)));
+    var mScale = [
+      [scale[0] / 100.0, 0, 0],
+      [0, scale[1] / 100.0, 0],
+      [0, 0, (scale[2] || 100.0) / 100.0]
+    ];
+
+    var linear = m3Mul(mOrient, m3Mul(mRot, mScale));
+    return [
+      linear[0][0] * deltaA[0] + linear[0][1] * deltaA[1] + linear[0][2] * deltaA[2],
+      linear[1][0] * deltaA[0] + linear[1][1] * deltaA[1] + linear[1][2] * deltaA[2],
+      linear[2][0] * deltaA[0] + linear[2][1] * deltaA[1] + linear[2][2] * deltaA[2]
+    ];
+}
+
+// Apply the pivot to one layer using the FULL PivotCraft math (2D + 3D).
 function applyPivotToLayer(layer, nx, ny) {
+    var is3D = false;
+    try { is3D = !!layer.threeDLayer; } catch (e) { is3D = false; }
+
     var tr = layer.transform;
     if (!tr || !tr.anchorPoint) return false;
 
     var b = getLayerBounds(layer);
+
+    // Target anchor in layer local space
     var targetX = b.left + b.width * nx;
     var targetY = b.top + b.height * ny;
 
     var curA = tr.anchorPoint.value;
-    var delta = [targetX - curA[0], targetY - curA[1]];
+    var oldAx = curA[0], oldAy = curA[1], oldAz = is3D ? (curA[2] || 0) : 0;
+    var targetZ = is3D ? oldAz : 0;
+    var delta = [targetX - oldAx, targetY - oldAy, targetZ - oldAz];
 
-    // Compensate position so the layer stays visually in place, even when
-    // rotated/scaled (this is what the naive "position += delta" misses).
-    var curScale = tr.scale ? tr.scale.value : [100, 100];
-    if (typeof curScale === "number") curScale = [curScale, curScale];
-    var curRot = tr.rotation ? tr.rotation.value : 0;
-    var shift = computeShift2D(delta, curScale, curRot);
+    // Compute shift vector to preserve the layer's visible position
+    var shift = [0, 0, 0];
+    var curScale = tr.scale ? tr.scale.value : [100, 100, 100];
+    if (typeof curScale === "number") curScale = [curScale, curScale, 100];
+    if (curScale.length === 2) curScale = [curScale[0], curScale[1], 100];
+    if (is3D) {
+        var orient = tr.orientation ? tr.orientation.value : [0, 0, 0];
+        var rx = tr.xRotation ? tr.xRotation.value : 0;
+        var ry = tr.yRotation ? tr.yRotation.value : 0;
+        var rz = tr.zRotation ? tr.zRotation.value : (tr.rotation ? tr.rotation.value : 0);
+        shift = computeShift3D(delta, curScale, orient, [rx, ry, rz]);
+    } else {
+        var rot = tr.rotation ? tr.rotation.value : 0;
+        shift = computeShift2D(delta, curScale, rot);
+    }
 
+    // 1. Update Anchor Point (all keyframes if animated)
     var ap = tr.anchorPoint;
-    var posProp = tr.position;
-
     if (ap.numKeys > 0) {
         for (var ak = 1; ak <= ap.numKeys; ak++) {
             var val = ap.keyValue(ak);
-            ap.setValueAtKey(ak, [val[0] + delta[0], val[1] + delta[1]]);
+            if (is3D) {
+                ap.setValueAtKey(ak, [val[0] + delta[0], val[1] + delta[1], (val[2] || 0) + delta[2]]);
+            } else {
+                ap.setValueAtKey(ak, [val[0] + delta[0], val[1] + delta[1]]);
+            }
         }
     } else {
-        ap.setValue([targetX, targetY]);
+        if (is3D) {
+            ap.setValue([targetX, targetY, targetZ]);
+        } else {
+            ap.setValue([targetX, targetY]);
+        }
     }
 
+    // 2. Compensate Position (supports separated dimensions + Z)
+    var posProp = tr.position;
     var isSeparated = false;
-    try { isSeparated = !!(posProp && posProp.dimensionsSeparated); } catch (e) {}
+    try {
+        isSeparated = !!(posProp && posProp.dimensionsSeparated);
+    } catch (e) {}
 
-    if (isSeparated && tr.xPosition && tr.yPosition) {
-        var px = tr.xPosition, py = tr.yPosition;
-        if (px.numKeys > 0) {
-            for (var kx = 1; kx <= px.numKeys; kx++) px.setValueAtKey(kx, px.keyValue(kx) + shift[0]);
-        } else { px.setValue(px.value + shift[0]); }
-        if (py.numKeys > 0) {
-            for (var ky = 1; ky <= py.numKeys; ky++) py.setValueAtKey(ky, py.keyValue(ky) + shift[1]);
-        } else { py.setValue(py.value + shift[1]); }
+    if (isSeparated) {
+        var px = tr.xPosition;
+        var py = tr.yPosition;
+        var pz = is3D ? tr.zPosition : null;
+
+        if (px) {
+            if (px.numKeys > 0) {
+                for (var kx = 1; kx <= px.numKeys; kx++) px.setValueAtKey(kx, px.keyValue(kx) + shift[0]);
+            } else {
+                px.setValue(px.value + shift[0]);
+            }
+        }
+        if (py) {
+            if (py.numKeys > 0) {
+                for (var ky = 1; ky <= py.numKeys; ky++) py.setValueAtKey(ky, py.keyValue(ky) + shift[1]);
+            } else {
+                py.setValue(py.value + shift[1]);
+            }
+        }
+        if (pz) {
+            if (pz.numKeys > 0) {
+                for (var kz = 1; kz <= pz.numKeys; kz++) pz.setValueAtKey(kz, pz.keyValue(kz) + shift[2]);
+            } else {
+                pz.setValue(pz.value + shift[2]);
+            }
+        }
     } else if (posProp) {
         if (posProp.numKeys > 0) {
             for (var pk = 1; pk <= posProp.numKeys; pk++) {
-                var pv = posProp.keyValue(pk);
-                posProp.setValueAtKey(pk, [pv[0] + shift[0], pv[1] + shift[1]]);
+                var curP = posProp.keyValue(pk);
+                if (is3D) {
+                    posProp.setValueAtKey(pk, [curP[0] + shift[0], curP[1] + shift[1], (curP[2] || 0) + shift[2]]);
+                } else {
+                    posProp.setValueAtKey(pk, [curP[0] + shift[0], curP[1] + shift[1]]);
+                }
             }
         } else {
             var curPos = posProp.value;
-            posProp.setValue([curPos[0] + shift[0], curPos[1] + shift[1]]);
+            if (is3D) {
+                posProp.setValue([curPos[0] + shift[0], curPos[1] + shift[1], (curPos[2] || 0) + shift[2]]);
+            } else {
+                posProp.setValue([curPos[0] + shift[0], curPos[1] + shift[1]]);
+            }
         }
     }
+
     return true;
 }
 
