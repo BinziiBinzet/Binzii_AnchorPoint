@@ -33,7 +33,9 @@ win.margins = 16;
 var panel1 = win.add("panel", undefined, undefined, {name: "panel1"});
 panel1.orientation = "column";
 panel1.alignChildren = ["center", "center"];
-panel1.spacing = 0;
+// Even spacing between the three rows so the grid looks like a perfect square
+// (horizontal gap == vertical gap == 10px)
+panel1.spacing = 10;
 panel1.margins = 10;
 
 // GROUP1 - top row
