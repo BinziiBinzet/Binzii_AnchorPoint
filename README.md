@@ -1,7 +1,7 @@
-# Manipulate Anchor Point
+# Binzii Anchor Point
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M212BC7C)
 
-ScriptUI that moves the anchor point of a layer, with options to create a null and/or add anchor point expression and offset it.
+A **ScriptUI panel for EffectCraft** that moves a layer's anchor point via a 3x3 grid — with full **2D & 3D rotation-safe math** (powered by [PivotCraft](#acknowledgments--thanks) logic) — plus a one-click **Add Null** button that creates a null at the selected layer(s)' anchor position and parents them to it automatically.
 
 ## Table of Contents
 
