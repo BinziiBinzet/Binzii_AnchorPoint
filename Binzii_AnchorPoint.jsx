@@ -46,18 +46,18 @@ group1.margins = 0;
 
 var LT = group1.add("button", undefined, undefined, {name: "LT"});
 LT.text = "\u2196"; // ↖
-LT.preferredSize.width = 30;
-LT.preferredSize.height = 30;
+LT.preferredSize.width = 35;
+LT.preferredSize.height = 35;
 
 var CT = group1.add("button", undefined, undefined, {name: "CT"});
 CT.text = "\u2191"; // ↑
-CT.preferredSize.width = 30;
-CT.preferredSize.height = 30;
+CT.preferredSize.width = 35;
+CT.preferredSize.height = 35;
 
 var RT = group1.add("button", undefined, undefined, {name: "RT"});
 RT.text = "\u2197"; // ↗
-RT.preferredSize.width = 30;
-RT.preferredSize.height = 30;
+RT.preferredSize.width = 35;
+RT.preferredSize.height = 35;
 
 // GROUP2 - middle row
 // ======
@@ -69,18 +69,18 @@ group2.margins = 0;
 
 var LL = group2.add("button", undefined, undefined, {name: "LL"});
 LL.text = "\u2190"; // ←
-LL.preferredSize.width = 30;
-LL.preferredSize.height = 30;
+LL.preferredSize.width = 35;
+LL.preferredSize.height = 35;
 
 var CC = group2.add("button", undefined, undefined, {name: "CC"});
 CC.text = "\u2022"; // • (center marker so the middle cell isn't empty)
-CC.preferredSize.width = 30;
-CC.preferredSize.height = 30;
+CC.preferredSize.width = 35;
+CC.preferredSize.height = 35;
 
 var RR = group2.add("button", undefined, undefined, {name: "RR"});
 RR.text = "\u2192"; // →
-RR.preferredSize.width = 30;
-RR.preferredSize.height = 30;
+RR.preferredSize.width = 35;
+RR.preferredSize.height = 35;
 
 // GROUP3 - bottom row
 // ======
@@ -92,18 +92,18 @@ group3.margins = 0;
 
 var LB = group3.add("button", undefined, undefined, {name: "LB"});
 LB.text = "\u2199"; // ↙
-LB.preferredSize.width = 30;
-LB.preferredSize.height = 30;
+LB.preferredSize.width = 35;
+LB.preferredSize.height = 35;
 
 var BB = group3.add("button", undefined, undefined, {name: "BB"});
 BB.text = "\u2193"; // ↓
-BB.preferredSize.width = 30;
-BB.preferredSize.height = 30;
+BB.preferredSize.width = 35;
+BB.preferredSize.height = 35;
 
 var RB = group3.add("button", undefined, undefined, {name: "RB"});
 RB.text = "\u2198"; // ↘
-RB.preferredSize.width = 30;
-RB.preferredSize.height = 30;
+RB.preferredSize.width = 35;
+RB.preferredSize.height = 35;
 
 // ADD NULL BUTTON
 // ===============
@@ -167,54 +167,6 @@ function setPropertyValue(comp, property, value){
     }
 }
 
-// Bounding Box, also considers layers with masks
-function getBoundingBox(layer) {
-    var comp = layer.containingComp;
-    var currentTime = comp.time;
-    var boundingBox = {};
-
-    if (layer.Masks.numProperties) {
-        var maskGroup = layer.Masks;
-        var top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
-        var numMasks = maskGroup.numProperties;
-
-        for (var mask = 1; mask <= numMasks; mask++) {
-            var maskShape = maskGroup.property(mask).maskShape;
-            var shape = maskShape.valueAtTime(currentTime, false);
-            var verts = shape.vertices;
-            var inTangents = shape.inTangents;
-            var outTangents = shape.outTangents;
-
-            for (var i = 0; i < verts.length; i++) {
-                var vx = verts[i][0];
-                var vy = verts[i][1];
-                var inX = vx + inTangents[i][0];
-                var inY = vy + inTangents[i][1];
-                var outX = vx + outTangents[i][0];
-                var outY = vy + outTangents[i][1];
-
-                left = Math.min(left, vx, inX, outX);
-                right = Math.max(right, vx, inX, outX);
-                top = Math.min(top, vy, inY, outY);
-                bottom = Math.max(bottom, vy, inY, outY);
-            }
-
-            boundingBox.width = right - left;
-            boundingBox.height = bottom - top;
-            boundingBox.left = left;
-            boundingBox.top = top;
-        }
-    } else {
-        var sourceRect = layer.sourceRectAtTime(currentTime, true);
-        boundingBox.width = sourceRect.width;
-        boundingBox.height = sourceRect.height;
-        boundingBox.left = sourceRect.left;
-        boundingBox.top = sourceRect.top;
-    }
-
-    return boundingBox;
-}
-
 // Guard against runtime errors (e.g. no comp / no layer selected)
 function validateSelection(){
     var comp = app.project.activeItem;
@@ -230,10 +182,117 @@ function validateSelection(){
     return { comp: comp, layers: layers };
 }
 
-// Move the anchor point to the chosen grid position. Each click computes
-// the target from the CURRENT bounding box, so switching positions never
-// stacks deltas - the layer always ends up visually in place with the anchor
-// at the chosen corner/edge/center.
+// ---------------------------------------------------------------------------
+// Anchor-point math, taken from the PivotCraft script (EffectCraft contributors,
+// MIT License): sourceRectAtTime bounds + scale/rotation matrix compensation so
+// the layer never jumps visually when the pivot moves. 2D only, as requested.
+// ---------------------------------------------------------------------------
+
+// Bounding box of a layer (also considers layers with masks)
+function getLayerBounds(layer) {
+    var time = 0;
+    try {
+        var comp = layer.containingComp || app.project.activeItem;
+        if (comp) time = comp.time;
+    } catch (e) {}
+
+    var left = 0, top = 0, width = 0, height = 0;
+
+    // First attempt: sourceRectAtTime
+    try {
+        if (typeof layer.sourceRectAtTime === "function") {
+            var rect = layer.sourceRectAtTime(time, false);
+            if (rect && rect.width > 0 && rect.height > 0) {
+                left = rect.left;
+                top = rect.top;
+                width = rect.width;
+                height = rect.height;
+            }
+        }
+    } catch (e) {}
+
+    // Fallback for solids/footage if sourceRect was empty or zero
+    if (width <= 0 || height <= 0) {
+        if (layer.width && layer.height) {
+            left = 0; top = 0;
+            width = layer.width;
+            height = layer.height;
+        } else {
+            left = 0; top = 0;
+            width = 100; height = 100;
+        }
+    }
+
+    return { left: left, top: top, width: width, height: height };
+}
+
+// 2D rotation & scale matrix shift (PivotCraft computeShift2D)
+function computeShift2D(deltaA, scale, rotationDeg) {
+    var rad = rotationDeg * Math.PI / 180.0;
+    var cs = Math.cos(rad);
+    var sn = Math.sin(rad);
+    var dx = deltaA[0] * (scale[0] / 100.0);
+    var dy = deltaA[1] * (scale[1] / 100.0);
+    return [dx * cs - dy * sn, dx * sn + dy * cs];
+}
+
+// Apply the pivot to one layer using the PivotCraft math (2D path only).
+function applyPivotToLayer(layer, nx, ny) {
+    var tr = layer.transform;
+    if (!tr || !tr.anchorPoint) return false;
+
+    var b = getLayerBounds(layer);
+    var targetX = b.left + b.width * nx;
+    var targetY = b.top + b.height * ny;
+
+    var curA = tr.anchorPoint.value;
+    var delta = [targetX - curA[0], targetY - curA[1]];
+
+    // Compensate position so the layer stays visually in place, even when
+    // rotated/scaled (this is what the naive "position += delta" misses).
+    var curScale = tr.scale ? tr.scale.value : [100, 100];
+    if (typeof curScale === "number") curScale = [curScale, curScale];
+    var curRot = tr.rotation ? tr.rotation.value : 0;
+    var shift = computeShift2D(delta, curScale, curRot);
+
+    var ap = tr.anchorPoint;
+    var posProp = tr.position;
+
+    if (ap.numKeys > 0) {
+        for (var ak = 1; ak <= ap.numKeys; ak++) {
+            var val = ap.keyValue(ak);
+            ap.setValueAtKey(ak, [val[0] + delta[0], val[1] + delta[1]]);
+        }
+    } else {
+        ap.setValue([targetX, targetY]);
+    }
+
+    var isSeparated = false;
+    try { isSeparated = !!(posProp && posProp.dimensionsSeparated); } catch (e) {}
+
+    if (isSeparated && tr.xPosition && tr.yPosition) {
+        var px = tr.xPosition, py = tr.yPosition;
+        if (px.numKeys > 0) {
+            for (var kx = 1; kx <= px.numKeys; kx++) px.setValueAtKey(kx, px.keyValue(kx) + shift[0]);
+        } else { px.setValue(px.value + shift[0]); }
+        if (py.numKeys > 0) {
+            for (var ky = 1; ky <= py.numKeys; ky++) py.setValueAtKey(ky, py.keyValue(ky) + shift[1]);
+        } else { py.setValue(py.value + shift[1]); }
+    } else if (posProp) {
+        if (posProp.numKeys > 0) {
+            for (var pk = 1; pk <= posProp.numKeys; pk++) {
+                var pv = posProp.keyValue(pk);
+                posProp.setValueAtKey(pk, [pv[0] + shift[0], pv[1] + shift[1]]);
+            }
+        } else {
+            var curPos = posProp.value;
+            posProp.setValue([curPos[0] + shift[0], curPos[1] + shift[1]]);
+        }
+    }
+    return true;
+}
+
+// Move the anchor point to the chosen grid position (instant apply).
 // fx/fy are fractional coordinates within the bounding box:
 //   x: 0 = left edge, 0.5 = center, 1 = right edge
 //   y: 0 = top edge,  0.5 = center, 1 = bottom edge
@@ -241,91 +300,18 @@ function applyAnchorPoint(fx, fy){
   try {
     var selection = validateSelection();
     if(selection == null) return;
-    var comp = selection.comp;
     var layers = selection.layers;
 
-    app.beginUndoGroup("Manipulate Anchor Point");
-
-    for(var l = 0; l < layers.length; l++){
-        var currentLayer = layers[l];
-        var positionProp = currentLayer.property("ADBE Transform Group").property("ADBE Position");
-        var anchorPointProp = currentLayer.property("ADBE Transform Group").property("ADBE Anchor Point");
-
-        // Bounding box
-        var sourceRect = getBoundingBox(currentLayer);
-        var top = sourceRect.top;
-        var left = sourceRect.left;
-        var width = sourceRect.width;
-        var height = sourceRect.height;
-
-        // Target point in layer space
-        var tx = left + width * fx;
-        var ty = top + height * fy;
-
-        // Check if layer has any expression in the Anchor Point
-        if(anchorPointProp.expressionEnabled){
-            anchorPointProp.expression = "";
+    app.beginUndoGroup("Binzii Anchor Point: Set Anchor Point");
+    var count = 0;
+    try {
+        for(var l = 0; l < layers.length; l++){
+            if(applyPivotToLayer(layers[l], fx, fy)) count++;
         }
-
-        var newAnchorValue;
-        if(currentLayer.threeDLayer){
-            // ---- 3D layers ----
-            // The naive "position += anchor delta" trick breaks once a 3D
-            // layer is rotated: the anchor delta lives in the layer's OWN
-            // (rotated) coordinate system, so the layer visibly slides along
-            // its rotated axes. Fix: do the correction in WORLD space instead.
-            //   1. remember where the OLD anchor sits in world space,
-            //   2. set the new anchor,
-            //   3. with the new anchor, the chosen point (tx, ty) IS rendered
-            //      at the layer's Position - find where that lands in world
-            //      space via toWorld(),
-            //   4. shift Position by the world-space correction vector so the
-            //      chosen point lands exactly where the old anchor was.
-            // Result: the layer never jumps visually, even when rotated.
-            var oldAnchorWorld = currentLayer.toWorld(anchorPointProp.value);
-
-            var newA3D = [tx, ty];
-            if(anchorPointProp.value.length > 2){ newA3D.push(anchorPointProp.value[2]); }
-            setPropertyValue(comp, anchorPointProp, newA3D);
-
-            var targetWorld = currentLayer.toWorld([tx, ty]);
-            var curPos = positionProp.value;
-            var corrected = [];
-            for(var d3 = 0; d3 < curPos.length; d3++){
-                var corr = (d3 < 3) ? (oldAnchorWorld[d3] - targetWorld[d3]) : 0;
-                corrected.push(curPos[d3] + corr);
-            }
-            setPropertyValue(comp, positionProp, corrected);
-            continue; // 3D path fully handles this layer (undo group still open)
-        } else {
-            newAnchorValue = [tx, ty];
-        }
-
-        // ---- 2D layers ----
-        // Keep the layer visually in place: when the anchor moves by delta,
-        // the position must move by the same delta (in layer space).
-        var initialPositionValue2D = positionProp.value;
-        var initialAnchorValue2D = anchorPointProp.value;
-        var dims = Math.max(newAnchorValue.length, initialAnchorValue2D.length, initialPositionValue2D.length);
-        var newPositionValue = [];
-        for(var d = 0; d < dims; d++){
-            var na = (d < newAnchorValue.length) ? newAnchorValue[d] : 0;
-            var ia = (d < initialAnchorValue2D.length) ? initialAnchorValue2D[d] : 0;
-            var ip = (d < initialPositionValue2D.length) ? initialPositionValue2D[d] : 0;
-            newPositionValue.push(ip + (na - ia));
-        }
-        if(newAnchorValue.length < dims){
-            var padded = newAnchorValue.slice();
-            while(padded.length < dims) padded.push(0);
-            newAnchorValue = padded;
-        }
-
-        setPropertyValue(comp, positionProp, newPositionValue);
-        setPropertyValue(comp, anchorPointProp, newAnchorValue);
+    } finally {
+        app.endUndoGroup();
     }
-    app.endUndoGroup();
   } catch(err){
-    try { app.endUndoGroup(); } catch(e2){}
     alert("Binzii Anchor Point: could not move the anchor point - " + err);
   }
 }
