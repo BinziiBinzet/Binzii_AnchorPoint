@@ -4,27 +4,27 @@ A **ScriptUI panel for EffectCraft** that moves a layer's anchor point via a 3x3
 
 ## Table of Contents
 
-- [About This Fork](#about-this-fork)
-- [Installation](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#installation)
-- [Options](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#options)
-- [Examples](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#examples)
-- [Contributing](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#contributing)
-- [License](https://github.com/evefalcao/EF_Manipulate-Anchor-Point?tab=readme-ov-file#license)
+- [Project Status & Credits](#project-status--credits)
+- [Installation](#installation)
+- [Options](#options)
+- [Looks](#looks)
+- [Acknowledgments / Thanks](#acknowledgments--thanks)
+- [Contributing](#contributing)
+- [License](#license)
 
-## About This Fork
+## Project Status & Credits
 
-This repository is a **fork** of [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point), originally created by **[Eveline Falcão (@evefalcao)](https://github.com/evefalcao)**.
+This project started life as a fork of [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point) by **[Eveline Falcão (@evefalcao)](https://github.com/evefalcao)**, but it has since been **fully reworked from scratch** — the UI was rebuilt independently by [@BinziiBinzet](https://github.com/BinziiBinzet) and the anchor-point engine was replaced entirely with the [PivotCraft](#acknowledgments--thanks) logic. It is no longer a fork; this repository now stands on its own.
 
-All original credit for the script and its concept goes to the upstream author. This fork exists so I can keep my own copy and apply personal modifications to it. If you like the original work, please consider supporting the author via their [Ko-fi page](https://ko-fi.com/M4M212BC7C).
+That said, this project is still **inspired by Eveline Falcão's original idea**, and all credit for the initial concept goes to her. The anchor-point math powering this panel comes directly from **PivotCraft** — huge thanks to its authors (see [Acknowledgments](#acknowledgments--thanks)).
 
-- **Upstream repository:** https://github.com/evefalcao/EF_Manipulate-Anchor-Point
-- **Original author:** Eveline Falcão ([@evefalcao](https://github.com/evefalcao))
-- **Forked by:** [@BinziiBinzet](https://github.com/BinziiBinzet)
-- **License:** CC BY-SA 4.0 (same as upstream — attribution and share-alike terms apply)
+- **Created & maintained by:** [@BinziiBinzet](https://github.com/BinziiBinzet)
+- **Inspired by:** Eveline Falcão ([@evefalcao](https://github.com/evefalcao))
+- **Anchor-point engine:** PivotCraft logic (MIT License)
 
 ## Installation
 
-> **Note:** This fork is intended to be used with **EffectsCraft**, not Adobe After Effects.
+> **Note:** This panel is intended to be used with **EffectCraft**, not Adobe After Effects.
 
 1. Download the latest version of this script (`Binzii_AnchorPoint.jsx`).
 2. Copy the script file into your EffectsCraft ScriptUI Panels folder:
@@ -38,12 +38,12 @@ All original credit for the script and its concept goes to the upstream author. 
 - Rotation-safe math: anchor moves use the PivotCraft logic — bounds via `sourceRectAtTime` plus scale/rotation matrix compensation for **both 2D and 3D layers** (orientation + X/Y/Z rotation), so rotated, scaled or 3D-transformed layers never jump visually when the pivot changes. Animated keyframes (anchor & position, including separated dimensions and Z) are shifted too.
 - Tooltips: every control in the panel has a tooltip explaining what it does
 
-> **Fork changes:** compared to the upstream version, this fork removes the *Add Expression*, *Rotate Null*, *Apply button*, *Auto Apply checkbox* and *Offset Point* options, as well as the *"Anchor Point"* group title label. The grid now uses plain arrow buttons instead of radio buttons/checkboxes: each click applies immediately with single-selection guaranteed. The anchor-point math was replaced with the full PivotCraft logic (MIT): `sourceRectAtTime` bounds + 2D **and 3D** rotation/scale matrix compensation for position and keyframes (including separated dimensions). Grid buttons are 35x35 px. *Add Null* is a single button that creates a null at the layer's anchor point position and parents the selected layer(s) to it in one click. All UI elements have tooltips. The UI is built with the ScriptUI panel/group pattern (joonas.me style): a bordered panel centers the 3x3 grid inside the palette, with the Add Null button below — fully compatible with EffectsCraft (no browser-only `window` object is used).
+> **Rework notes:** compared to the original concept, this panel removes the *Add Expression*, *Rotate Null*, *Apply button*, *Auto Apply checkbox* and *Offset Point* options, as well as the *"Anchor Point"* group title label. The grid now uses plain arrow buttons instead of radio buttons/checkboxes: each click applies immediately with single-selection guaranteed. The anchor-point math was replaced with the full PivotCraft logic (MIT): `sourceRectAtTime` bounds + 2D **and 3D** rotation/scale matrix compensation for position and keyframes (including separated dimensions). Grid buttons are 35x35 px. *Add Null* is a single button that creates a null at the layer's anchor point position and parents the selected layer(s) to it in one click. All UI elements have tooltips. The UI is built with the ScriptUI panel/group pattern (joonas.me style): a bordered panel centers the 3x3 grid inside the palette, with the Add Null button below — fully compatible with EffectCraft (no browser-only `window` object is used).
 
 ## Acknowledgments / Thanks
 
-- **[Eveline Falcão (@evefalcao)](https://github.com/evefalcao)** — original author of the upstream script this fork is based on.
-- **PivotCraft** (EffectCraft contributors, MIT License) — huge thanks! The entire anchor-point engine of this fork (layer bounds detection via `sourceRectAtTime`, 2D rotation/scale matrix compensation, and the full 3D orientation/rotation matrix math with keyframe-aware position correction) is taken directly from PivotCraft.
+- **PivotCraft** (EffectCraft contributors, MIT License) — huge thanks! The entire anchor-point engine of this project (layer bounds detection via `sourceRectAtTime`, 2D rotation/scale matrix compensation, and the full 3D orientation/rotation matrix math with keyframe-aware position correction) is taken directly from PivotCraft.
+- **[Eveline Falcão (@evefalcao)](https://github.com/evefalcao)** — this project is inspired by her original [EF_Manipulate-Anchor-Point](https://github.com/evefalcao/EF_Manipulate-Anchor-Point) script; all credit for the initial concept goes to her.
 - Charles Bordenave ([nabscripts.com](https://www.nabscripts.com)) for *Reposition Anchor Point*, and Zack Lovatt ([lova.tt](https://lova.tt/)) for *zl_CreatePivotalNull*, which inspired the original upstream script.
 
 ## Looks
